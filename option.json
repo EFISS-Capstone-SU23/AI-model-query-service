@@ -1,5 +1,0 @@
-{
-    "batch_query" : false,
-    "return_indices" : true,
-    "top_k" : 10
-}
