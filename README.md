@@ -4,7 +4,9 @@ indices are IDs of images in the database: 0, 1, 2, 3, ...
 ## Query by image
 
 the input is user's uploaded image and the output is a JSON list of image paths or indices
+
 API: /api/image
+
 Input: multipart/form-data
 
 ```
@@ -110,7 +112,9 @@ fetch('http://localhost:8000', {
 ## Query by text
 
 the input is a text query and the output is a JSON list of image paths or indices
+
 API: /api/text
+
 Input: application/json
 
 ```
@@ -162,7 +166,9 @@ or
 ### Admin API
 
 Reindex the database
+
 API: /api/reindex
+
 Input: application/json
 
 ```
