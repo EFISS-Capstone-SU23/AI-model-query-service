@@ -1,4 +1,5 @@
 There are 2 APIs: query by image and query by text
+
 indices are IDs of images in the database: 0, 1, 2, 3, ...
 
 ## Query by image
