@@ -11,9 +11,9 @@ Input: multipart/form-data
 file=user's uploaded image
 files=user's uploaded images (if batch_query is true)
 option={
-    batch_query: false, // if true, the input containing multiple images
-    return_indices: true, // if true, return indices instead of image paths
-    top_k: 10, // number of images to return
+    "batch_query": false, // if true, the input containing multiple images
+    "return_indices": true, // if true, return indices instead of image paths
+    "top_k": 10, // number of images to return
 }
 ```
 
@@ -21,9 +21,9 @@ Output:
 
 ```json
 {
-    index_database_version: '1.2.0', // version of the index database
-    batch_query: false,
-    indices: [69, 42, 13, 37, 0, 1, 2, 3, 4, 5],
+    "index_database_version": '1.2.0', // version of the index database
+    "batch_query": false,
+    "indices": [69, 42, 13, 37, 0, 1, 2, 3, 4, 5],
 }
 ```
 
@@ -31,9 +31,9 @@ or
 
 ```json
 {
-    index_database_version: '1.2.0', // version of the index database
-    batch_query: true,
-    indices: [
+    "index_database_version": '1.2.0', // version of the index database
+    "batch_query": true,
+    "indices": [
         [69, 42, 13, 37, 0, 1, 2, 3, 4, 5],  // results indices for the first image
         [299, 42, 44, 37, 0, 1, 2, 3, 4, 5], // results indices for the second image
         [69, 42, 13, 37, 0, 1, 2, 3, 4, 5],
