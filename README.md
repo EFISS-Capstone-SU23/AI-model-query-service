@@ -26,7 +26,7 @@ Output:
 {
     "index_database_version": "1.2.0", // version of the index database
     "batch_query": false,
-    "indices": [69, 42, 13, 37, 0, 1, 2, 3, 4, 5],
+    "indices": [69, 42, 13, 37, 0, 1, 2, 3, 4, 5],  // indices of relevant images, sorted by relevance from most relevant to least relevant
 }
 ```
 
@@ -35,10 +35,10 @@ or
 ```
 {
     "index_database_version": "1.2.0",       // version of the index database
-    "batch_query": true,
+    "batch_query": true,                   // multiple queries at once, each query has its own independent results
     "indices": [
-        [69, 42, 13, 37, 0, 1, 2, 3, 4, 5],  // results indices for the first image
-        [299, 42, 44, 37, 0, 1, 2, 3, 4, 5], // results indices for the second image
+        [69, 42, 13, 37, 0, 1, 2, 3, 4, 5],  // relevant images indices for the first query image
+        [299, 42, 44, 37, 0, 1, 2, 3, 4, 5], // relevant images indices for the second query image
         [69, 42, 13, 37, 0, 1, 2, 3, 4, 5],
     ]
 }
