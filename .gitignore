@@ -1,0 +1,17 @@
+.idea/
+data
+data/
+csvs
+csvs/
+*.csv
+*.xlsx
+# *.ipynb
+*.pth
+*.zip
+logs/
+**/__pycache__/
+__pycache__/
+**/.DS_Store
+.DS_Store
+logs
+**/.ipynb_checkpoints
