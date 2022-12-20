@@ -10,12 +10,12 @@ API: /api/image
 Input: multipart/form-data
 
 ```
-file=user's uploaded image
-files=user's uploaded images (if batch_query is true)
+files=user's uploaded image(s)
 option={
     "batch_query": false,           // if true, the input containing multiple images
     "return_indices": true,         // if true, return indices instead of image paths
     "top_k": 10,                    // number of images to return
+    "algorithm": "h2",           // algorithm to use: m1, m2, m3, h1, h2, h3, t1, t2, t3
 }
 ```
 
@@ -62,6 +62,7 @@ option = {
     batch_query: false,
     return_indices: true,
     top_k: 10,
+    algorithm: 'h2',
 };
 file1 = fs.createReadStream('query-image1.jpg');
 file2 = fs.createReadStream('query-image2.jpg');
@@ -89,6 +90,7 @@ option = {
     batch_query: false,
     return_indices: true,
     top_k: 10,
+    algorithm: 'h2',
 };
 // <input type="file" id="query-image" multiple />
 files = document.getElementById('query-image').files;
@@ -123,6 +125,7 @@ Input: application/json
     return_indices: true,
     top_k: 10, // number of images to return
     query: 'a text query', // text query
+    algorithm: 'h2',
 }
 ```
 
@@ -137,6 +140,7 @@ or
         'a text query', // first query
         'another text query', // second query
     ],
+    algorithm: 'h2',
 }
 ```
 

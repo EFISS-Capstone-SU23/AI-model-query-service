@@ -162,22 +162,3 @@ def get_web_app(log_path, device='cpu', top_k=10):
         return jsonify(results)
 
     return app
-
-// bash client
-curl -F "option=<option.json" -F "files=@app.py" -F "files=@web.py" http://localhost:8000
-
-// javascript client
-const formData = new FormData();
-formData.append('option', new Blob([JSON.stringify(option)], {type: 'application/json'}));
-formData.append('files', file1);
-formData.append('files', file2);
-fetch('http://localhost:8000', {
-    method: 'POST',
-    headers: {
-        'Accept': 'application/json',
-        'Content-Type': 'multipart/form-data',
-    },
-    body: formData,
-}).then(response => response.json()).then(data => {
-    console.log(data);
-});
