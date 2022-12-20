@@ -164,13 +164,20 @@ or
 Reindex the database
 API: /api/reindex
 Input: application/json
+
+```
 {
     new_index_database_version: '1.2.0', // version of the new index database
 }
+```
+
 Output:
+
+```
 {
     result: 'success',
     previous_index_database_version: '1.1.0', // version of the previous index database
     index_database_version: '1.2.0', // version of the new index database
     timestamp: '2020-05-02 12:00:00',
 }
+```
