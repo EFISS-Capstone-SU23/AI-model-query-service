@@ -70,7 +70,7 @@ const formData = new FormData();
 formData.append('option', new Blob([JSON.stringify(option)], {type: 'application/json'}));
 formData.append('files', file1);
 formData.append('files', file2);
-fetch('http://localhost:8000', {
+fetch('http://localhost:8000/api/image', {
     method: 'POST',
     headers: {
         'Accept': 'application/json',
@@ -97,7 +97,7 @@ formData.append('option', new Blob([JSON.stringify(option)], {type: 'application
 for (let i = 0; i < files.length; i++) {
     formData.append('files', files[i]);
 }
-fetch('http://localhost:8000', {
+fetch('http://localhost:8000/api/image', {
     method: 'POST',
     headers: {
         'Accept': 'application/json',
