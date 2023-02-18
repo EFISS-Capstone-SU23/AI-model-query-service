@@ -13,7 +13,7 @@ Input: multipart/form-data
 ```
 files=user's uploaded image(s)
 option={
-    "batch_query": false,           // if true, the input containing multiple images
+    "batch_query": false,           // @deprecated - this will be inferred from number of files that user upload - this option have no effect on the output - if true, the input contains multiple images
     "return_indices": true,         // if true, return indices instead of image paths
     "top_k": 10,                    // number of images to return
     "algorithm": "h2",           // algorithm to use: m1, m2, m3, h1, h2, h3, t1, t2, t3
