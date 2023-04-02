@@ -4,9 +4,10 @@ from torch.utils.data import Dataset
 import torchvision
 from torchvision.datasets.folder import pil_loader, accimage_loader
 
+
 class DeepHashingDataset(Dataset):
     def __init__(self, data, transform=None):
-        if torchvision.get_image_backend() == 'PIL':
+        if torchvision.get_image_backend() == "PIL":
             self.loader = pil_loader
         else:
             self.loader = accimage_loader
