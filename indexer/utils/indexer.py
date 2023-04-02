@@ -34,7 +34,7 @@ class Indexer:
             new_index_database_version: version of the new index
             index_mode: mode of the index
         """
-        logging.info(f"Begin indexing new_index_database_version: {new_index_database_version}")
+        logging.info(f"Begin indexing...")
         begin_time = time()
         # Getting Datetime from timestamp
         date_time = datetime.fromtimestamp(time()).strftime("%d/%m/%Y %H:%M:%S")
@@ -84,7 +84,7 @@ class Indexer:
 
         # create data
         dataset = DeepHashingDataset(database, transform=transforms.Compose([
-            transforms.Resize(image_size),
+            transforms.Resize((image_size, image_size)),
             transforms.ToTensor(),
         ]))
 
@@ -112,6 +112,8 @@ class Indexer:
                 hashcode = model(batch)
                 hashcodes.append(hashcode.cpu())
         hashcodes = torch.cat(hashcodes, dim=0)
+        self.configs["hashcode_length"] = hashcodes.shape[1]
+        logging.info(f"Hashcodes shape: {hashcodes.shape}")
         hashcodes = self.convert_int(hashcodes)
         logging.info("Finish computing hashcodes")
         return hashcodes
@@ -142,13 +144,13 @@ class Indexer:
         if index_mode == "default":
             logging.info("Use faiss.IndexBinaryFlat")
             # create index
-            index = faiss.IndexBinaryFlat(hashcodes.shape[-1])
+            index = faiss.IndexBinaryFlat(self.configs["hashcode_length"])
             index.add(hashcodes)
         elif index_mode == "ivf":
             logging.info("Use faiss.IndexBinaryIVF")
             # create index
-            quantizer = faiss.IndexBinaryFlat(hashcodes.shape[-1])
-            index = faiss.IndexBinaryIVF(quantizer, hashcodes.shape[-1], 100)
+            quantizer = faiss.IndexBinaryFlat(self.configs["hashcode_length"])
+            index = faiss.IndexBinaryIVF(quantizer, self.configs["hashcode_length"], 100)
             index.train(hashcodes)
             index.add(hashcodes)
         else:

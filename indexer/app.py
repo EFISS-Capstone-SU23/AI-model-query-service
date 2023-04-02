@@ -5,7 +5,7 @@ from utils.logger import setup_logging
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('--device', help="pytorch device, e.g. cuda:0, cpu", type=str, default='cuda')
+    parser.add_argument('--device', help="pytorch device, e.g. cuda:0, cpu", type=str, default='cpu')
     parser.add_argument('--dir', help="dump index path", type=str, required=False, default='index')
     parser.add_argument('--ip', help='ip address', type=str, default='0.0.0.0')
     parser.add_argument('--port', help='tcp port', type=int, default=8000)
