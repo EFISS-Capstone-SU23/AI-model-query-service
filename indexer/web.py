@@ -1,22 +1,11 @@
-import base64
-import io
-import os
-import time
-from zipfile import ZipFile
 import json
-
-import numpy as np
 from flask import (
     Flask,
-    render_template,
     request,
-    flash,
-    make_response,
-    send_from_directory,
     jsonify,
 )
-from utils.datasets import DeepHashingDataset
 from utils.indexer import Indexer
+import logging
 
 
 def get_web_app(configs):
@@ -38,7 +27,7 @@ def get_web_app(configs):
         """
         option = json.loads(request.form.get("option"))
         new_index_database_version = option["new_index_database_version"]
-        print("Begin indexing new_index_database_version: ", new_index_database_version)
+        logging.info("Begin indexing new_index_database_version: ", new_index_database_version)
         database_info = request.files.getlist("files")[0]
         # read file into a list
         database_info = database_info.read().decode("utf-8").splitlines()
@@ -55,6 +44,7 @@ def get_web_app(configs):
                 image_size - 224
             else:
                 raise ValueError("image_size is not specified")
+        logging.info("image_size: ", image_size)
 
         results = indexer_service.create_index(
             model_path=model_path,
@@ -64,6 +54,7 @@ def get_web_app(configs):
             index_mode=index_mode,
         )
 
+        logging.info("Return results: ", results)
         return jsonify(results)
 
     return app

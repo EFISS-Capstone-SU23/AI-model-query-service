@@ -36,6 +36,7 @@ class Indexer:
             index_mode: mode of the index
             dump_index_path: path to dump the index
         """
+        logging.info("Begin indexing new_index_database_version: ", new_index_database_version)
         begin_time = time()
         # Getting Datetime from timestamp
         date_time = datetime.fromtimestamp(time()).strftime("%d/%m/%Y %H:%M:%S")
@@ -55,11 +56,14 @@ class Indexer:
             date_time=date_time,
         )
 
+        logging.info("Finish indexing new_index_database_version: ", new_index_database_version)
+        elapsed_time = time() - begin_time
+        logging.info("Elapsed time: ", elapsed_time)
         return dict(
             result="success",
             index_database_version=new_index_database_version,
             timestamp=date_time,
-            elapsed_time=time() - begin_time,
+            elapsed_time=elapsed_time,
         )
 
     def compute_hashcodes(
@@ -74,6 +78,8 @@ class Indexer:
             model_path: torchscript model path
             database: List of image path
         """
+        logging.info("Begin computing hashcodes")
+        logging.info("Loading Model from path: ", model_path)
         # load model
         model = torch.jit.load(model_path, map_location=self.configs["device"])
         model.eval()
@@ -91,6 +97,7 @@ class Indexer:
             pin_memory=True,
         )
 
+        logging.info("Compute hashcodes...")
         # compute hashcodes
         hashcodes = []
         with torch.no_grad(), amp.autocast():
@@ -107,6 +114,7 @@ class Indexer:
                 hashcodes.append(hashcode.cpu())
         hashcodes = torch.cat(hashcodes, dim=0)
         hashcodes = self.convert_int(hashcodes)
+        logging.info("Finish computing hashcodes")
         return hashcodes
 
     def dump_index(
@@ -127,7 +135,9 @@ class Indexer:
             index_mode: mode of the index. If mode is "default", use faiss.IndexBinaryFlat, if mode is "ivf", use faiss.IndexBinaryIVF.
             date_time: datetime of the index
         """
+        logging.info("Dump remap_index_to_img_path_dict...", end=" ")
         remap_index_to_img_path_dict = self.create_bi_directional_dictionary(database)
+        logging.info("Done!")
         logging.info("Dump index...")
         if index_mode == "default":
             logging.info("Use faiss.IndexBinaryFlat")
@@ -144,6 +154,7 @@ class Indexer:
         else:
             raise ValueError(f"index_mode {index_mode} is not supported")
 
+        logging.info("Done adding index")
         # dump index
         index_path = os.path.join(dump_index_path, new_index_database_version)
         os.makedirs(index_path, exist_ok=True)
