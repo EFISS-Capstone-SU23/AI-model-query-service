@@ -19,7 +19,7 @@ def get_web_app(configs):
         API: /reindex
         {
             "new_index_database_version": "1.2.0",
-            "model_path": "wop/abc_xyz/"
+            "model_path": "torchscripts_models/relahash_tf_efficientnetv2_b3.pt",
         }
         file: database_info.txt
         data/abc.com/69_abc_com.jpg
@@ -27,7 +27,7 @@ def get_web_app(configs):
         """
         option = json.loads(request.form.get("option"))
         new_index_database_version = option["new_index_database_version"]
-        logging.info("Begin indexing new_index_database_version: ", new_index_database_version)
+        logging.info(f"Begin indexing new_index_database_version: {new_index_database_version}")
         database_info = request.files.getlist("files")[0]
         # read file into a list
         database_info = database_info.read().decode("utf-8").splitlines()
@@ -41,10 +41,10 @@ def get_web_app(configs):
             elif "tf_efficientnet_b7_ns" in model_path:
                 image_size = 600
             elif "mobilenetv3small" in model_path:
-                image_size - 224
+                image_size = 224
             else:
                 raise ValueError("image_size is not specified")
-        logging.info("image_size: ", image_size)
+        logging.info(f"image_size: {image_size}")
 
         results = indexer_service.create_index(
             model_path=model_path,
@@ -54,7 +54,7 @@ def get_web_app(configs):
             index_mode=index_mode,
         )
 
-        logging.info("Return results: ", results)
+        logging.info(f"Return results: {results}")
         return jsonify(results)
 
     return app

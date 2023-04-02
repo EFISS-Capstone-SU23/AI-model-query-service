@@ -26,7 +26,6 @@ class Indexer:
         image_size: int = 256,
         new_index_database_version: str = "1.0.0",
         index_mode: str = "default",
-        dump_index_path: str = "index",
     ):
         """
         Args:
@@ -34,13 +33,12 @@ class Indexer:
             database: list of image path
             new_index_database_version: version of the new index
             index_mode: mode of the index
-            dump_index_path: path to dump the index
         """
-        logging.info("Begin indexing new_index_database_version: ", new_index_database_version)
+        logging.info(f"Begin indexing new_index_database_version: {new_index_database_version}")
         begin_time = time()
         # Getting Datetime from timestamp
         date_time = datetime.fromtimestamp(time()).strftime("%d/%m/%Y %H:%M:%S")
-        logging.info("Datetime from timestamp:", date_time)
+        logging.info(f"Datetime from timestamp: {date_time}")
 
         # create index
         hashcodes = self.compute_hashcodes(
@@ -50,15 +48,16 @@ class Indexer:
         self.dump_index(
             hashcodes=hashcodes,
             database=database,
-            dump_index_path=dump_index_path,
+            dump_index_path=self.configs['dump_index_path'],
             new_index_database_version=new_index_database_version,
             index_mode=index_mode,
             date_time=date_time,
+            image_size=image_size,
         )
 
-        logging.info("Finish indexing new_index_database_version: ", new_index_database_version)
+        logging.info(f"Finish indexing new_index_database_version: {new_index_database_version}")
         elapsed_time = time() - begin_time
-        logging.info("Elapsed time: ", elapsed_time)
+        logging.info(f"Elapsed time: {elapsed_time}")
         return dict(
             result="success",
             index_database_version=new_index_database_version,
@@ -70,7 +69,6 @@ class Indexer:
         self,
         model_path: str,
         database: List[str],
-        index_mode: str = "default",
         image_size: int = 256,
     ):
         """
@@ -79,15 +77,16 @@ class Indexer:
             database: List of image path
         """
         logging.info("Begin computing hashcodes")
-        logging.info("Loading Model from path: ", model_path)
+        logging.info(f"Loading Model from path: {model_path}")
         # load model
         model = torch.jit.load(model_path, map_location=self.configs["device"])
         model.eval()
 
         # create data
-        dataset = DeepHashingDataset(
-            database, transform=transforms.Compose([transforms.Resize(image_size),])
-        )
+        dataset = DeepHashingDataset(database, transform=transforms.Compose([
+            transforms.Resize(image_size),
+            transforms.ToTensor(),
+        ]))
 
         dataloader = torch.utils.data.DataLoader(
             dataset,
@@ -125,6 +124,7 @@ class Indexer:
         new_index_database_version: str,
         index_mode: str = "default",
         date_time: str = "01/01/2021 00:00:00",
+        image_size: int = 256,
     ):
         """
         Args:
@@ -135,7 +135,7 @@ class Indexer:
             index_mode: mode of the index. If mode is "default", use faiss.IndexBinaryFlat, if mode is "ivf", use faiss.IndexBinaryIVF.
             date_time: datetime of the index
         """
-        logging.info("Dump remap_index_to_img_path_dict...", end=" ")
+        logging.info("Dump remap_index_to_img_path_dict...")
         remap_index_to_img_path_dict = self.create_bi_directional_dictionary(database)
         logging.info("Done!")
         logging.info("Dump index...")
@@ -165,6 +165,7 @@ class Indexer:
         self.configs["index_mode"] = index_mode
         self.configs["index_path"] = index_path
         self.configs["index_datetime"] = date_time
+        self.configs["image_size"] = image_size
         with open(os.path.join(dump_index_path, new_index_database_version, "configs.json"), "w") as f:
             json.dump(self.configs, f)
         with open(os.path.join(dump_index_path, new_index_database_version, "remap_index_to_img_path_dict.json"), "w") as f:
