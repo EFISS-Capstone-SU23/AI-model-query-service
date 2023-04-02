@@ -48,6 +48,7 @@ class Indexer:
         # dump index
         self.dump_index(
             hashcodes=hashcodes,
+            database=database,
             dump_index_path=dump_index_path,
             new_index_database_version=new_index_database_version,
             index_mode=index_mode,
@@ -111,6 +112,7 @@ class Indexer:
     def dump_index(
         self,
         hashcodes: np.ndarray,
+        database: List[str],
         dump_index_path: str,
         new_index_database_version: str,
         index_mode: str = "default",
@@ -119,11 +121,13 @@ class Indexer:
         """
         Args:
             hashcodes: hashcodes
+            database: list of image path
             dump_index_path: path to dump the index
             new_index_database_version: version of the new index
             index_mode: mode of the index. If mode is "default", use faiss.IndexBinaryFlat, if mode is "ivf", use faiss.IndexBinaryIVF.
             date_time: datetime of the index
         """
+        remap_index_to_img_path_dict = self.create_bi_directional_dictionary(database)
         logging.info("Dump index...")
         if index_mode == "default":
             logging.info("Use faiss.IndexBinaryFlat")
@@ -152,9 +156,24 @@ class Indexer:
         self.configs["index_datetime"] = date_time
         with open(os.path.join(dump_index_path, new_index_database_version, "configs.json"), "w") as f:
             json.dump(self.configs, f)
+        with open(os.path.join(dump_index_path, new_index_database_version, "remap_index_to_img_path_dict.json"), "w") as f:
+            json.dump(remap_index_to_img_path_dict, f)
 
         logging.info("Dump index successfully")
         logging.info(f"Configs: {self.configs}")
+    
+    @staticmethod
+    def create_bi_directional_dictionary(database: List[str]):
+        remap_index_to_img_path_dict = {}
+        remap_img_path_to_index_dict = {}
+        for index, img_path in enumerate(database):
+            remap_index_to_img_path_dict[str(index)] = img_path
+            remap_img_path_to_index_dict[img_path] = str(index)
+        
+        return {
+            "remap_index_to_img_path_dict": remap_index_to_img_path_dict,
+            "remap_img_path_to_index_dict": remap_img_path_to_index_dict,
+        }
 
     @staticmethod
     def convert_int(codes):
