@@ -1,0 +1,7 @@
+torch
+torchvision
+torchaudio
+torchserve
+torch-model-archiver
+torch-workflow-archiver
+# faiss

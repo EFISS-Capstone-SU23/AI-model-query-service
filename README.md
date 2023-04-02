@@ -174,12 +174,20 @@ Reindex the database
 
 API: /api/reindex
 
-Input: application/json
+Input: multipart/form-data
 
 ```
 {
-    new_index_database_version: '1.2.0', // version of the new index database
+    "new_index_database_version": '1.2.0', // version of the new index database
+	"mode": "default", // ['default', 'unnecessary fast']
+	"model_path": "model_name/001/"
 }
+```
+
+```
+# database_info.txt
+data/abc.com/69_abc_com.jpg
+data/abc.com/42_abc_com.jpg
 ```
 
 Output:
@@ -190,5 +198,54 @@ Output:
     previous_index_database_version: '1.1.0', // version of the previous index database
     index_database_version: '1.2.0', // version of the new index database
     timestamp: '2020-05-02 12:00:00',
+}
+```
+
+### TorchServe API
+
+API: /api/predictions/model
+
+Request:
+
+```
+{
+	"top_k": 10,
+}
+```
+
+Response
+
+```
+{
+    "index_database_version": "1.2.0", // version of the index database
+    "relevant": [
+				"data/abc.com/69_abc_com.jpg",
+				"data/abc.com/42_abc_com.jpg"
+		],  // file path of relevant images, sorted by relevance from most relevant to least relevant
+}
+```
+
+Request:
+
+```
+{
+	"top_k": 10,
+	"debug": true,
+}
+```
+
+Response
+
+```
+{
+    "index_database_version": "1.2.0", // version of the index database
+    "relevant": [
+				"data/abc.com/69_abc_com.jpg",
+				"data/abc.com/42_abc_com.jpg"
+		],  // file path of relevant images, sorted by relevance from most relevant to least relevant
+		"distances": [
+				2,
+				50
+		]
 }
 ```
