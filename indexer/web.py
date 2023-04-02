@@ -18,14 +18,8 @@ from flask import (
 from utils.datasets import DeepHashingDataset
 from utils.indexer import Indexer
 
-ALLOWED_EXTENSIONS = {"png", "jpg", "jpeg", "tiff", "webp", "tif", "jfif"}
 
-
-def allowed_format(filename):
-    return "." in filename and filename.rsplit(".", 1)[1].lower() in ALLOWED_EXTENSIONS
-
-
-def get_web_app(configs, device="cpu"):
+def get_web_app(configs):
     indexer_service = Indexer(configs)
     app = Flask(__name__, template_folder="templates", static_folder="static")
     app.secret_key = "my_secret_key"
@@ -70,13 +64,6 @@ def get_web_app(configs, device="cpu"):
             index_mode=index_mode,
         )
 
-        # results = dict(
-        #     result='success',
-        #     previous_index_database_version='1.1.0',
-        #     index_database_version='1.2.0',
-        #     timestamp='2020-05-02 12:00:00',
-        #     elapsed_time=100, # seconds
-        # )
         return jsonify(results)
 
     return app
