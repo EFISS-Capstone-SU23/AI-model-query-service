@@ -175,7 +175,7 @@ class Indexer:
         self.configs["image_size"] = image_size
         self.configs["model_path"] = model_path
         self.configs["model_name"] = model_path.split("/")[-1]
-        with open(os.path.join(dump_index_path, new_index_database_version, "configs.json"), "w") as f:
+        with open(os.path.join(dump_index_path, new_index_database_version, "config.json"), "w") as f:
             json.dump(self.configs, f)
         with open(os.path.join(dump_index_path, new_index_database_version, "remap_index_to_img_path_dict.json"), "w") as f:
             json.dump(remap_index_to_img_path_dict, f)
