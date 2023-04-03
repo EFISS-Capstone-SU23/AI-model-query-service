@@ -1,6 +1,7 @@
 import json
 import logging
 import os
+import sys
 
 from PIL import Image
 import faiss
@@ -53,6 +54,7 @@ class Indexer:
             index_mode=index_mode,
             date_time=date_time,
             image_size=image_size,
+            model_path=model_path,
         )
 
         logging.info(f"Finish indexing new_index_database_version: {new_index_database_version}")
@@ -120,6 +122,7 @@ class Indexer:
 
     def dump_index(
         self,
+        model_path: str,
         hashcodes: np.ndarray,
         database: List[str],
         dump_index_path: str,
@@ -161,6 +164,8 @@ class Indexer:
         index_path = os.path.join(dump_index_path, new_index_database_version)
         os.makedirs(index_path, exist_ok=True)
         faiss.write_index_binary(index, os.path.join(index_path, "index.bin"))
+        # absolute path
+        self.configs["abs_index_path"] = os.path.abspath(os.path.join(index_path, "index.bin"))
 
         # update configs
         self.configs["index_database_version"] = new_index_database_version
@@ -168,6 +173,8 @@ class Indexer:
         self.configs["index_path"] = index_path
         self.configs["index_datetime"] = date_time
         self.configs["image_size"] = image_size
+        self.configs["model_path"] = model_path
+        self.configs["model_name"] = model_path.split("/")[-1]
         with open(os.path.join(dump_index_path, new_index_database_version, "configs.json"), "w") as f:
             json.dump(self.configs, f)
         with open(os.path.join(dump_index_path, new_index_database_version, "remap_index_to_img_path_dict.json"), "w") as f:

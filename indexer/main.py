@@ -1,7 +1,7 @@
 import argparse
 import sys
 from utils.logger import setup_logging
-from utils.indexer import Indexer
+from indexer import Indexer
 from pprint import pp, pprint
 import logging
 
