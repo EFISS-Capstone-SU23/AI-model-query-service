@@ -82,6 +82,7 @@ class DeepHashingHandler(VisionHandler):
         """
         images = []
         topk_batch = []
+        debug = False
 
         for row in data:
             # Compat layer: normally the envelope should just return the data
@@ -90,6 +91,7 @@ class DeepHashingHandler(VisionHandler):
             req = json.loads(req)
             topk = req.get("topk", 10)
             image = req.get("image")
+            debug = req.get("debug", False)
             if isinstance(image, str):
                 # if the image is a string of bytesarray.
                 image = base64.b64decode(image)
@@ -105,10 +107,10 @@ class DeepHashingHandler(VisionHandler):
             images.append(image)
             topk_batch.append(topk)
 
-        return torch.stack(images).to(self.device), topk_batch
+        return torch.stack(images).to(self.device), topk_batch, debug
 
     def inference(self, batch):
-        img_tensor, topk_batch = batch
+        img_tensor, topk_batch, debug = batch
         logger.info(f"img_tensor.shape: {img_tensor.shape}")
         logger.info(f"topk_batch: {topk_batch}")
         logger.info(f"img_tensor.device: {img_tensor.device}")
@@ -130,12 +132,26 @@ class DeepHashingHandler(VisionHandler):
                 logger.info(f"Top {topk} distances for image {i}: {D}")
                 logger.info(f"I.shape: {_I.shape}")
                 I.append(_I[0])
-        return I
+        return D, I, debug
     
     def postprocess(self, inference_output):
-        img_paths = [[self.remap_index_to_img_path_dict[str(idx)] for idx in idxs] for idxs in inference_output]
-        logger.info(img_paths)
-        return img_paths
+        D, I, debug = inference_output
+        logger.info(f"Postprocess: I: {I}")
+        logger.info(f"Postprocess: D: {D}")
+        img_paths = [[self.remap_index_to_img_path_dict[str(idx)] for idx in idxs] for idxs in I]
+        if not debug:
+            responses = [{
+                "index_database_version": self.setup_config["index_database_version"],
+                "relevant": img_path
+            } for img_path in img_paths]
+        else:
+            responses = [{
+                "index_database_version": self.setup_config["index_database_version"],
+                "relevant": img_path,
+                "distances": dists.tolist()
+            } for img_path, dists in zip(img_paths, D)]
+        logger.info(f"Postprocess: responses: {responses}")
+        return responses
 
     @staticmethod
     def convert_int(codes):
