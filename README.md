@@ -4,10 +4,10 @@ API: predictions/image-retrieval-v1.0
 
 Request:
 
-```
+```json
 {
-	"top_k": 10,
-    "image": <base64 encoded image>,
+    "top_k": 10,
+    "image": "<base64 encoded image>"
 }
 ```
 
@@ -27,9 +27,9 @@ Request:
 
 ```
 {
-	"top_k": 10,
-    "image": <base64 encoded image>,
-	"debug": true,
+    "top_k": 10,
+    "image": "<base64 encoded image>",
+    "debug": true,
 }
 ```
 
@@ -70,18 +70,18 @@ Input: multipart/form-data
 ```json
 {
     "new_index_database_version": "1.2.0", // version of the new index database
-	"mode": "default", // ['default', 'unnecessary fast']
-	"model_path": "model_name/001/"
+    "mode": "default", // ['default', 'unnecessary fast']
+    "model_path": "model_name/001/"
 }
 ```
 
 Output:
 
-```
+```json
 {
-    result: 'success',
-    previous_index_database_version: '1.1.0', // version of the previous index database
-    index_database_version: '1.2.0', // version of the new index database
-    timestamp: '2020-05-02 12:00:00',
+    "result": "success",
+    "previous_index_database_version": "1.1.0", // version of the previous index database
+    "index_database_version": "1.2.0", // version of the new index database
+    "timestamp": "2020-05-02 12:00:00",
 }
 ```
