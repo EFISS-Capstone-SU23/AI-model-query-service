@@ -33,6 +33,7 @@ class DeepHashingHandler(VisionHandler):
             if torch.cuda.is_available() and properties.get("gpu_id") is not None
             else "cpu"
         )
+        logging.info(f"Using device: {self.device}")
 
         if os.path.isfile(os.path.join(model_dir, "module.zip")):
             with zipfile.ZipFile(model_dir + "/module.zip", "r") as zip_ref:
@@ -49,6 +50,7 @@ class DeepHashingHandler(VisionHandler):
         logger.info(f"Loading model from {model_pt_path}")
         self.model = torch.jit.load(model_pt_path, map_location=self.device)
         self.model.eval()
+        logger.info(f'Model loaded successfully from {model_pt_path}: {self.model}')
 
         # Load the index
         logger.info(f"Loading index from {self.setup_config['abs_index_path']}")
@@ -107,7 +109,9 @@ class DeepHashingHandler(VisionHandler):
 
     def inference(self, batch):
         img_tensor, topk_batch = batch
-        print(f"img_tensor.shape: {img_tensor.shape}")
+        logger.info(f"img_tensor.shape: {img_tensor.shape}")
+        logger.info(f"topk_batch: {topk_batch}")
+        logger.info(f"img_tensor.device: {img_tensor.device}")
         with torch.no_grad(), amp.autocast():
             img_tensor = img_tensor.to(self.device)
             hashcodes = self.model(img_tensor)
