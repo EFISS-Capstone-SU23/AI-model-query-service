@@ -1,4 +1,4 @@
-### TorchServe API
+# TorchServe API
 
 API: predictions/image-retrieval-v1.0
 
@@ -22,6 +22,8 @@ Response
     ],  // file path of relevant images, sorted by relevance from most relevant to least relevant
 }
 ```
+
+### Debug mode
 
 Request:
 
@@ -49,7 +51,7 @@ Response
 }
 ```
 
-### Admin API
+# Admin API
 
 Reindex the database
 
@@ -60,8 +62,13 @@ Reindex the database
 data/abc.com/69_abc_com.jpg
 data/abc.com/42_abc_com.jpg
 
-python indexer/main.py --database database_info.txt --model_path torchscripts_models/relahash_tf_efficientnetv2_b3_relahash_64_deepfashion2_200_0.0005_adam.pt --device cuda
+python indexer/main.py \
+    --database database_info.txt \
+    --model_path torchscripts_models/relahash_tf_efficientnetv2_b3_relahash_64_deepfashion2_200_0.0005_adam.pt \
+    --device cuda \
+    --new_index_database_version 1.2.0
 ```
+
 
 2. API: /api/reindex _(still underdevelopment)_
 

@@ -12,7 +12,7 @@ fi
 # cd searcher
 
 model_name="relahash-medium-64bits"
-version="index/1.2.0"
+version="index/1.4.0"
 
 torch-model-archiver -f \
     --model-name $model_name \
