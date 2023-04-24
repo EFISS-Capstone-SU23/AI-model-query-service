@@ -4,6 +4,8 @@ from torch.utils.data import Dataset
 import torchvision
 from torchvision.datasets.folder import pil_loader, accimage_loader
 
+from PIL import ImageFile
+ImageFile.LOAD_TRUNCATED_IMAGES = True
 
 class DeepHashingDataset(Dataset):
     def __init__(self, data, transform=None):
