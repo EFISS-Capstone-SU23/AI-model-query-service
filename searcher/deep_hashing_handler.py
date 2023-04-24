@@ -53,8 +53,8 @@ class DeepHashingHandler(VisionHandler):
         logger.info(f'Model loaded successfully from {model_pt_path}: {self.model}')
 
         # Load the index
-        logger.info(f"Loading index from {self.setup_config['abs_index_path']}")
-        self.index = faiss.read_index_binary(self.setup_config["abs_index_path"])
+        logger.info(f"Loading index ...")
+        self.index = faiss.read_index_binary(os.path.join(model_dir, "index.bin"))
 
         if os.path.isfile(os.path.join(model_dir, "remap_index_to_img_path_dict.json")):
             with open(os.path.join(model_dir, "remap_index_to_img_path_dict.json")) as f:

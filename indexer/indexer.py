@@ -164,8 +164,6 @@ class Indexer:
         index_path = os.path.join(dump_index_path, new_index_database_version)
         os.makedirs(index_path, exist_ok=True)
         faiss.write_index_binary(index, os.path.join(index_path, "index.bin"))
-        # absolute path
-        self.configs["abs_index_path"] = os.path.abspath(os.path.join(index_path, "index.bin"))
 
         # update configs
         self.configs["index_database_version"] = new_index_database_version

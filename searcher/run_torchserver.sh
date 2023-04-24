@@ -21,7 +21,8 @@ torch-model-archiver -f \
     --handler searcher/deep_hashing_handler.py \
     --extra-files \
 "$version/config.json,\
-$version/remap_index_to_img_path_dict.json"
+$version/remap_index_to_img_path_dict.json,\
+$version/index.bin"
 # module.zip"
 
 mkdir -p model_store
