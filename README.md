@@ -13,7 +13,7 @@ Request:
 
 Response
 
-```
+```json
 {
     "index_database_version": "1.2.0", // version of the index database
     "relevant": [
@@ -25,7 +25,7 @@ Response
 
 Request:
 
-```
+```json
 {
     "top_k": 10,
     "image": "<base64 encoded image>",
@@ -35,7 +35,7 @@ Request:
 
 Response
 
-```
+```json
 {
     "index_database_version": "1.2.0", // version of the index database
     "relevant": [
