@@ -41,5 +41,7 @@ RUN mkdir -p /app/model_store && \
 
 ENV MODEL_NAME=relahash-medium-64bits
 
-# ENTRYPOINT [ "/bin/bash", "-c" ]
-CMD torchserve --start --model-store /app/model_store --models image-retrieval-v1.0=${MODEL_NAME}.mar --ts-config /app/config.properties
+COPY searcher/run.sh /app/
+
+ENTRYPOINT [ "/bin/bash" ]
+CMD [ "/app/run.sh"]
