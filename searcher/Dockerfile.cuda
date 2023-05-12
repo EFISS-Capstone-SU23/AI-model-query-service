@@ -1,6 +1,7 @@
-FROM python:3.9-slim
+FROM python:3.8-slim
 RUN apt-get update && apt-get -y upgrade \
   && apt-get install -y --no-install-recommends \
+    openjdk-11-jre-headless \
     git \
     wget \
     g++ \
@@ -16,19 +17,26 @@ RUN wget https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh \
     conda init bash && \
     . /root/.bashrc && \
     conda update conda && \
-    conda create -n efiss && \
+    conda create -n efiss python=3.8 && \
     conda activate efiss && \
-    conda install python=3.9 pip
+    conda install pip
+
+RUN conda init bash && \
+    . /root/.bashrc && \
+    conda activate efiss && \
+    conda install pytorch==1.11.0 cudatoolkit=11.3 -c pytorch && \
+    conda install numpy && \
+    conda install -c pytorch faiss-gpu=1.7.3 cudatoolkit=11.3
+
 RUN echo 'conda activate efiss' >> /root/.bashrc
 
 # install dependencies
 RUN mkdir -p /install
 WORKDIR /install
-RUN conda install -c pytorch faiss-gpu
-RUN git clone https://github.com/pytorch/serve/ && \
-    python ./ts_scripts/install_dependencies.py --cuda=cu116 && \
-    pip install torchserve torch-model-archiver torch-workflow-archiver && \
-
+RUN git clone https://github.com/pytorch/serve/ && cd serve && \
+    conda init bash && . /root/.bashrc && conda activate efiss && \
+    python ./ts_scripts/install_dependencies.py --cuda=cu113 && \
+    pip install torchserve torch-model-archiver torch-workflow-archiver pyyaml captum
 
 ARG VERSION=1.2.0
 ARG MODEL_NAME=relahash-medium-64bits
@@ -38,10 +46,11 @@ WORKDIR /app
 
 COPY searcher/config.properties searcher/deep_hashing_handler.py /app/
 COPY index/${VERSION} /app/index/${VERSION}
-COPY torchscripts_models/ /app/torchscripts_models
+COPY torchscripts_models/${MODEL_NAME}.pt /app/torchscripts_models/${MODEL_NAME}.pt
   
 # create model archive file packaging model artifacts and dependencies
-RUN torch-model-archiver -f \
+RUN conda init bash && . /root/.bashrc && conda activate efiss && \
+  torch-model-archiver -f \
   --model-name=$MODEL_NAME \
   --version=1.0 \
   --serialized-file=/app/torchscripts_models/${MODEL_NAME}.pt \
@@ -51,6 +60,8 @@ RUN torch-model-archiver -f \
 RUN mkdir -p /app/model_store && \
   mv ${MODEL_NAME}.mar /app/model_store
 
-ENTRYPOINT [ "/bin/bash", "-l", "-c" ]
-CMD torchserve --start --model-store /app/model_store --models image-retrieval-v1.0=${MODEL_NAME}.mar --ts-config /app/config.properties
+ENV MODEL_NAME=relahash-medium-64bits
 
+# ENTRYPOINT [ "/bin/bash", "-l", "-c" ]
+CMD conda init bash && . /root/.bashrc && conda activate efiss && \
+    torchserve --start --model-store /app/model_store --models image-retrieval-v1.0=${MODEL_NAME}.mar --ts-config /app/config.properties
