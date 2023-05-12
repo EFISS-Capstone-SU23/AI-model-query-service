@@ -1,9 +1,22 @@
 FROM python:3.9-bullseye
 RUN mkdir -p /install
 WORKDIR /install
+
+# install java
+RUN apt-get update && apt-get -y upgrade \
+  && apt-get install -y --no-install-recommends \
+    openjdk-11-jre-headless \
+    git \
+    wget \
+    g++ \
+    ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+
 # install dependencies
 COPY searcher/requirements.txt /install
 RUN pip install -r requirements.txt
+
+RUN pip install pyyaml captum
 
 ARG VERSION=1.2.0
 ARG MODEL_NAME=relahash-medium-64bits
@@ -13,7 +26,7 @@ WORKDIR /app
 
 COPY searcher/config.properties searcher/deep_hashing_handler.py /app/
 COPY index/${VERSION} /app/index/${VERSION}
-COPY torchscripts_models/ /app/torchscripts_models
+COPY torchscripts_models/${MODEL_NAME}.pt /app/torchscripts_models/${MODEL_NAME}.pt
   
 # create model archive file packaging model artifacts and dependencies
 RUN torch-model-archiver -f \
@@ -26,5 +39,7 @@ RUN torch-model-archiver -f \
 RUN mkdir -p /app/model_store && \
   mv ${MODEL_NAME}.mar /app/model_store
 
-ENTRYPOINT [ "/bin/bash", "-l", "-c" ]
+ENV MODEL_NAME=relahash-medium-64bits
+
+# ENTRYPOINT [ "/bin/bash", "-c" ]
 CMD torchserve --start --model-store /app/model_store --models image-retrieval-v1.0=${MODEL_NAME}.mar --ts-config /app/config.properties
