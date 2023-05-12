@@ -98,11 +98,19 @@ Output:
 1. Build CPU docker image
 
 ```bash
-docker build -t efiss-ai:latest -t efiss-ai:1.0.0-cpu -f searcher/Dockerfile .
+docker build -t efiss-ai:latest \
+    -t efiss-ai:1.0.0-cpu \
+    -t asia-southeast1-docker.pkg.dev/even-acumen-386115/efiss/efiss-ai:latest \
+    -t asia-southeast1-docker.pkg.dev/even-acumen-386115/efiss/efiss-ai:1.0.0-cpu \
+    -f searcher/Dockerfile .
 ```
 
 2. Build GPU docker image
 
 ```bash
-docker build -t efiss-ai:latest-cuda -t efiss-ai:1.0.0-cuda -f searcher/Dockerfile.cuda .
+docker build -t efiss-ai:latest-cuda \
+    -t efiss-ai:1.0.0-cuda \
+    -t asia-southeast1-docker.pkg.dev/even-acumen-386115/efiss/efiss-ai:latest-cuda \
+    -t asia-southeast1-docker.pkg.dev/even-acumen-386115/efiss/efiss-ai:1.0.0-cuda \
+    -f searcher/Dockerfile.cuda .
 ```
