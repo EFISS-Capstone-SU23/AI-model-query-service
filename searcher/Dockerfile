@@ -9,6 +9,7 @@ RUN apt-get update && apt-get -y upgrade \
     git \
     wget \
     g++ \
+    curl \
     ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
@@ -41,7 +42,7 @@ RUN mkdir -p /app/model_store && \
 
 ENV MODEL_NAME=relahash-medium-64bits
 
-COPY searcher/run.sh /app/
+COPY searcher/run.sh searcher/example.json /app/
 
 ENTRYPOINT [ "/bin/bash" ]
 CMD [ "/app/run.sh"]

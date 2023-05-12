@@ -88,7 +88,7 @@ class DeepHashingHandler(VisionHandler):
             # Compat layer: normally the envelope should just return the data
             # directly, but older versions of Torchserve didn't have envelope.
             req = row.get("data") or row.get("body")
-            logger.info(f"req: {req}")
+            logger.info(f"req: {str(req)[:200]}")
             if req is None:
                 logger.error("Malformed input data!")
             if isinstance(req, str):
