@@ -92,3 +92,17 @@ Output:
     "timestamp": "2020-05-02 12:00:00",
 }
 ```
+
+# Build
+
+1. Build CPU docker image
+
+```bash
+docker build -t efiss-ai:latest -t efiss-ai:1.0.0-cpu -f searcher/Dockerfile .
+```
+
+2. Build GPU docker image
+
+```bash
+docker build -t efiss-ai:latest-cuda -t efiss-ai:1.0.0-cuda -f searcher/Dockerfile.cuda .
+```
