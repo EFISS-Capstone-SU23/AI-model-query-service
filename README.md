@@ -103,6 +103,7 @@ docker build -t efiss-ai:latest \
     -t asia-southeast1-docker.pkg.dev/even-acumen-386115/efiss/efiss-ai:latest \
     -t asia-southeast1-docker.pkg.dev/even-acumen-386115/efiss/efiss-ai:1.0.0-cpu \
     -f searcher/Dockerfile .
+docker push asia-southeast1-docker.pkg.dev/even-acumen-386115/efiss/efiss-ai:1.0.0-cpu
 ```
 
 2. Build GPU docker image
