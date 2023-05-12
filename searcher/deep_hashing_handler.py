@@ -88,7 +88,17 @@ class DeepHashingHandler(VisionHandler):
             # Compat layer: normally the envelope should just return the data
             # directly, but older versions of Torchserve didn't have envelope.
             req = row.get("data") or row.get("body")
-            req = json.loads(req)
+            logger.info(f"req: {req}")
+            if req is None:
+                logger.error("Malformed input data!")
+            if isinstance(req, str):
+                req = json.loads(req)
+            elif isinstance(req, (bytearray, bytes)):   
+                req = json.loads(req.decode("utf-8"))
+            elif isinstance(req, dict):
+                pass
+            else:
+                logger.error(f"Unknown input type: {type(req)}")
             topk = req.get("topk", 10)
             image = req.get("image")
             debug = req.get("debug", False)
