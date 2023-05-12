@@ -1,7 +1,19 @@
-FROM python:3.9-bullseye
+FROM python:3.8-bullseye
+# Install torchserve dependencies
+RUN apt-get update && apt-get -y upgrade \
+  && apt-get install -y --no-install-recommends \
+    git \
+    wget \
+    g++ \
+    ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN git clone https://github.com/pytorch/serve/ && cd serve && \
+    python ./ts_scripts/install_dependencies.py
+
+# install dependencies
 RUN mkdir -p /install
 WORKDIR /install
-# install dependencies
 COPY searcher/requirements.txt /install
 RUN pip install -r requirements.txt
 
@@ -26,5 +38,7 @@ RUN torch-model-archiver -f \
 RUN mkdir -p /app/model_store && \
   mv ${MODEL_NAME}.mar /app/model_store
 
-ENTRYPOINT [ "/bin/bash", "-l", "-c" ]
+ENV MODEL_NAME=relahash-medium-64bits
+
+# ENTRYPOINT [ "/bin/bash", "-c" ]
 CMD torchserve --start --model-store /app/model_store --models image-retrieval-v1.0=${MODEL_NAME}.mar --ts-config /app/config.properties
