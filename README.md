@@ -1,6 +1,8 @@
-# TorchServe API
+# AI model service for EFISS
 
-API: predictions/image-retrieval-v1.0
+## TorchServe API
+
+API: `https://ai.efiss.tech/predictions/image-retrieval-v1.0`
 
 Request:
 
@@ -51,57 +53,19 @@ Response
 }
 ```
 
-# Admin API
+## Reindex the database
 
-Reindex the database
+1. Update `version` in [./indexer/reindex.sh](./indexer/reindex.sh) and [./docker-compose.yml](./docker-compose.yml)
 
-1. By running [indexer/main.py](indexer/main.py) directly _(recommended)_
+2. Just run
 
-    1.1. Get `database_info.txt` file
+```bash
+bash indexer/reindex.sh
+```
 
-    ```bash
-    bash indexer/extract_datalake.sh /path/to/datalake
-    ```
+It will gather images data, index them, dockerize them, push to GCR, and re-run the GPU service locally.
 
-    1.2. Run [indexer/main.py](indexer/main.py)
-
-    ```bash
-    # database_info.txt
-    data/abc.com/69_abc_com.jpg
-    data/abc.com/42_abc_com.jpg
-
-    python indexer/main.py \
-        --database database_info.txt \
-        --model_path torchscripts_models/relahash-medium-64bits.pt \
-        --device cuda:0 \
-        --new_index_database_version 1.5.0
-    ```
-
-
-2. API: `/api/reindex` _(still underdevelopment)_
-
-    Note: this should be change to cronjob instead of calling Admin API
-
-    ```json
-    {
-        "new_index_database_version": "1.2.0", // version of the new index database
-        "mode": "default", // ['default', 'unnecessary fast']
-        "model_path": "model_name/001/"
-    }
-    ```
-
-    Output:
-
-    ```json
-    {
-        "result": "success",
-        "previous_index_database_version": "1.1.0", // version of the previous index database
-        "index_database_version": "1.2.0", // version of the new index database
-        "timestamp": "2020-05-02 12:00:00",
-    }
-    ```
-
-# Build
+## Build
 
 1. Build CPU docker image
 

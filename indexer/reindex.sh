@@ -39,3 +39,5 @@ docker build -t efiss-ai:latest-cuda \
     --build-arg MODEL_NAME=relahash-medium-64bits \
     --build-arg VERSION=$version \
     -f searcher/Dockerfile.cuda .
+
+docker compose up -d
