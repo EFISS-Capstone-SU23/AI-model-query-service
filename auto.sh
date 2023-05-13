@@ -1,5 +1,8 @@
 #!/bin/bash
 
+# log current time
+echo ----- $(date) -------
+
 cd /home/saplab/thaiminhpv/EFISS/AI-model-query-service
 bash indexer/increase_version.sh
 bash indexer/reindex.sh

@@ -25,7 +25,7 @@ bash indexer/extract_datalake.sh /media/saplab/Data_Win/RSI_Do_An/AnhND/Dynamic-
 
 set -x
 
-python indexer/main.py \
+/home/saplab/anaconda3/envs/thaiminhpv/bin/python indexer/main.py \
     --database database_info.txt \
     --model_path torchscripts_models/relahash-medium-64bits.pt \
     --device cuda:0 \
