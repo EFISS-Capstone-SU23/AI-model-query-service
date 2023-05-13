@@ -29,6 +29,7 @@ if [ ! -d "$datadir" ]; then
     exit 1
 fi
 
+rm -v database_info.txt || true
 
 for domain in $(ls $datadir); do
     for img in $(ls $datadir/$domain); do
