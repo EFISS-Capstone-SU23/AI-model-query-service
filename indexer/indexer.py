@@ -96,6 +96,7 @@ class Indexer:
             num_workers=self.configs["num_workers"],
             shuffle=False,
             pin_memory=True,
+            collate_fn=dataset.collate_fn,
         )
 
         logging.info("Compute hashcodes...")

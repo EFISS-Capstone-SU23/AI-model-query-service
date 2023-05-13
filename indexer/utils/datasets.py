@@ -22,7 +22,16 @@ class DeepHashingDataset(Dataset):
 
     def __getitem__(self, idx):
         filename = self.data[idx]
-        img = self.loader(filename)
-        if self.transform:
-            img = self.transform(img)
+        try:
+            img = self.loader(filename)
+            if self.transform:
+                img = self.transform(img)
+        except Exception as e:
+            print(f"Error when loading image: {filename}")
+            print(e)
+            return None
         return img
+    
+    def collate_fn(self, batch):
+        batch = list(filter(lambda x: x is not None, batch))
+        return torch.utils.data.dataloader.default_collate(batch)
