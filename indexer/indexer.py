@@ -109,6 +109,7 @@ class Indexer:
                 total=len(dataloader),
                 ascii=True,
                 ncols=100,
+                disable=True
             )
             for batch in pbar:
                 batch = batch.to(self.configs["device"])
