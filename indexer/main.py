@@ -16,11 +16,11 @@ def main(args):
     image_size = args.image_size
 
     if image_size is None:
-        if "tf_efficientnetv2_b3" in model_path:
+        if "tf_efficientnetv2_b3" in model_path or "medium" in model_path:
             image_size = 300
-        elif "tf_efficientnet_b7_ns" in model_path:
+        elif "tf_efficientnet_b7_ns" in model_path or "large" in model_path:
             image_size = 600
-        elif "mobilenetv3small" in model_path:
+        elif "mobilenetv3small" in model_path or "small" in model_path:
             image_size = 224
         else:
             raise ValueError("image_size is not specified")
