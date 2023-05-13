@@ -55,7 +55,11 @@ Response
 
 ## Reindex the database
 
-1. Update `version` in [./indexer/reindex.sh](./indexer/reindex.sh) and [./docker-compose.yml](./docker-compose.yml)
+1. Update version by editing .env
+
+```bash
+cp .env.example .env
+```
 
 2. Just run
 

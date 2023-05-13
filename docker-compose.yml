@@ -5,7 +5,7 @@ services:
       context: .
       dockerfile: searcher/Dockerfile.cuda
       args:
-        - VERSION=1.5.0
+        - VERSION=${VERSION}
     image: efiss-ai:latest-cuda
     container_name: efiss-ai
     restart: on-failure
