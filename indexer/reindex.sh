@@ -21,13 +21,13 @@ if [ -z "$VERSION" ]; then
     exit 1
 fi
 
-bash indexer/extract_datalake.sh /media/saplab/Data_Win/RSI_Do_An/AnhND/Dynamic-Crawler-Tool/output
+# bash indexer/extract_datalake.sh /media/saplab/Data_Win/RSI_Do_An/AnhND/Dynamic-Crawler-Tool/output
 
 set -x
 
 /home/saplab/anaconda3/envs/thaiminhpv/bin/python indexer/main.py \
     --database database_info.txt \
-    --model_path torchscripts_models/relahash-medium-64bits.pt \
+    --model_path torchscripts_models/$MODEL_NAME.pt \
     --device cuda:0 \
     --batch_size 384 \
     --num_workers 16 \
@@ -37,7 +37,7 @@ docker build -t efiss-ai:latest \
     -t efiss-ai:$VERSION-cpu \
     -t asia-southeast1-docker.pkg.dev/even-acumen-386115/efiss/efiss-ai:latest \
     -t asia-southeast1-docker.pkg.dev/even-acumen-386115/efiss/efiss-ai:$VERSION-cpu \
-    --build-arg MODEL_NAME=relahash-medium-64bits \
+    --build-arg MODEL_NAME=$MODEL_NAME \
     --build-arg VERSION=$VERSION \
     -f searcher/Dockerfile .
 
@@ -49,7 +49,7 @@ docker build -t efiss-ai:latest-cuda \
     -t efiss-ai:$VERSION-cuda \
     -t asia-southeast1-docker.pkg.dev/even-acumen-386115/efiss/efiss-ai:latest-cuda \
     -t asia-southeast1-docker.pkg.dev/even-acumen-386115/efiss/efiss-ai:$VERSION-cuda \
-    --build-arg MODEL_NAME=relahash-medium-64bits \
+    --build-arg MODEL_NAME=$MODEL_NAME \
     --build-arg VERSION=$VERSION \
     -f searcher/Dockerfile.cuda .
 
