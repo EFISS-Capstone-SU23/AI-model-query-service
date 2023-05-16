@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Image Retrieval App</title>
+</head>
+<body>
+    <h1>Image Retrieval App</h1>
+    <form action="/" method="post" enctype="multipart/form-data">
+        <input type="file" name="image" accept="image/*">
+        <input type="submit" value="Upload">
+    </form>
+    {% if images %}
+        <h2>Relevant Images</h2>
+        {% for image, dist in zip(images, distances) %}
+            <img src="{{ image }}" width="200" height="200">
+            <p style="display: inline-block; width: 200;">{{ dist }}</p>
+        {% endfor %}
+    {% endif %}
+</body>
+</html>
