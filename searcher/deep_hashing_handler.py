@@ -12,6 +12,9 @@ import logging
 from typing import Dict, List, Tuple
 from torchvision import transforms
 import torch.cuda.amp as amp
+import cv2
+import albumentations as A
+from albumentations.pytorch import ToTensorV2
 
 
 logger = logging.getLogger(__name__)
@@ -63,9 +66,9 @@ class DeepHashingHandler(VisionHandler):
             raise Exception("Missing the remap_index_to_img_path_dict.json file.")
 
         image_size = self.setup_config["image_size"]
-        self.image_processing = transforms.Compose([
-            transforms.Resize((image_size, image_size)),
-            transforms.ToTensor(),
+        self.image_processing = A.Compose([
+            A.Resize(image_size, image_size),
+            ToTensorV2(),
         ])
 
     def preprocess(self, data):
@@ -109,6 +112,7 @@ class DeepHashingHandler(VisionHandler):
             # If the image is sent as bytesarray
             if isinstance(image, (bytearray, bytes)):
                 image = Image.open(io.BytesIO(image))
+                image = cv2.cvtColor(np.array(image), cv2.COLOR_BGR2RGB)
                 image = self.image_processing(image)
             else:
                 # if the image is a list
