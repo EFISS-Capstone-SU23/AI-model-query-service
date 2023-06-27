@@ -68,6 +68,10 @@ class DeepHashingHandler(VisionHandler):
         image_size = self.setup_config["image_size"]
         self.image_processing = A.Compose([
             A.Resize(image_size, image_size),
+            A.Normalize(
+                mean=[0.485, 0.456, 0.406],
+                std=[0.229, 0.224, 0.225],
+            ),
             ToTensorV2(),
         ])
 
