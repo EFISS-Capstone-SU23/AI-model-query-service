@@ -88,7 +88,7 @@ class DeepHashingHandler(VisionHandler):
             list : The preprocess function returns the input image as a list of float tensors.
         """
         images = []
-        topk_batch = []
+        topk_batch: List[int] = []
         debug = False
 
         for row in data:
@@ -106,9 +106,9 @@ class DeepHashingHandler(VisionHandler):
                 pass
             else:
                 logger.error(f"Unknown input type: {type(req)}")
-            topk = req.get("topk", 10)
+            topk: int = req.get("topk", 10)
             image = req.get("image")
-            debug = req.get("debug", False)
+            debug: bool = req.get("debug", False)  # NOTE: debug mode is set for all images in a batch
             if isinstance(image, str):
                 # if the image is a string of bytesarray.
                 image = base64.b64decode(image)
@@ -128,35 +128,69 @@ class DeepHashingHandler(VisionHandler):
         return torch.stack(images).to(self.device), topk_batch, debug
 
     def inference(self, batch):
+        """
+        The Inference Function receives the pre-processed input in form of Tensor
+        Args:
+            batch (torch.tensor): list of images, topk_batch, debug
+                - images: torch.tensor of shape (batch_size, 3, image_size, image_size)
+                - topk_batch (List[int]): list of topk for each image in the batch
+                - debug: bool, whether to return debug information
+        Returns:
+            D (torch.tensor): distance matrix of shape (batch_size, topk)
+            I (torch.tensor): index matrix of shape (batch_size, topk)
+            debug (bool): whether to return debug information
+        """
         img_tensor, topk_batch, debug = batch
         logger.info(f"img_tensor.shape: {img_tensor.shape}")
         logger.info(f"topk_batch: {topk_batch}")
         logger.info(f"img_tensor.device: {img_tensor.device}")
         with torch.no_grad(), amp.autocast():
             img_tensor = img_tensor.to(self.device)
-            hashcodes = self.model(img_tensor)
-        logging.info(f"Hashcodes shape: {hashcodes.shape}")
-        features = self.convert_int(hashcodes)
+            features = self.model(img_tensor)
+        logging.info(f"Hashcodes shape: {features.shape}")
+        hashcodes = self.convert_int(features)
         logging.info("Finish computing hashcodes")
 
         if len(set(topk_batch)) == 1:
             # all topk are the same, we can use batch search
-            D, I = self.index.search(features, topk_batch[0])
+            D, I = self.index.search(hashcodes, topk_batch[0])
         else:
             I = []
             for i, topk in enumerate(topk_batch):
-                D, _I = self.index.search(features[i, :].reshape(1, -1), topk)
+                D, _I = self.index.search(hashcodes[i, :].reshape(1, -1), topk)
                 logger.info(f"Top {topk} similar images for image {i}: {_I}")
                 logger.info(f"Top {topk} distances for image {i}: {D}")
                 logger.info(f"I.shape: {_I.shape}")
                 I.append(_I[0])
+        
+        # TODO:
+        # If there is any images that have the same distance as the top 1 result,
+        # we will use features to compute the distance and sort them.
+        # This is ensure that if the query exists in the database, it will be the top 1 result.
+
         return D, I, debug
     
     def postprocess(self, inference_output):
+        """
+        The post-process function receives the return value of the inference function.
+        It performs post-processing on the raw output to convert it into a format that is
+        easy for the user to understand.
+        
+        Args:
+            D (torch.tensor): distance matrix of shape (batch_size, topk)
+            I (torch.tensor): index matrix of shape (batch_size, topk)
+            debug (bool): whether to return debug information
+        
+        Returns:
+            responses (List[Dict]): list of responses
+                - index_database_version (str): version of the index database
+                - relevant (List[str]): list of relevant images, each image is a string of image path, sorted by relevance
+                - distances (List[int]): list of distances. Only returned if debug is True
+        """
         D, I, debug = inference_output
         logger.info(f"Postprocess: I: {I}")
         logger.info(f"Postprocess: D: {D}")
-        img_paths = [[self.remap_index_to_img_path_dict[str(idx)] for idx in idxs] for idxs in I]
+        img_paths: List[List[int]] = [[self.remap_index_to_img_path_dict[str(idx)] for idx in idxs] for idxs in I]
         if not debug:
             responses = [{
                 "index_database_version": self.setup_config["index_database_version"],
