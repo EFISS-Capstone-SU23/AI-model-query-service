@@ -1,21 +1,24 @@
 import torch
 import numpy as np
 from torch.utils.data import Dataset
-import torchvision
-from torchvision.datasets.folder import pil_loader, accimage_loader
+import cv2
+import albumentations as A
+from albumentations.pytorch import ToTensorV2
 
 from PIL import ImageFile
 ImageFile.LOAD_TRUNCATED_IMAGES = True
 
 class DeepHashingDataset(Dataset):
     def __init__(self, data, transform=None):
-        if torchvision.get_image_backend() == "PIL":
-            self.loader = pil_loader
-        else:
-            self.loader = accimage_loader
-
         self.data = data
         self.transform = transform
+    
+    def get_image(self, img_path: str):
+        img = cv2.imread(img_path)
+        img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+        if self.transform is not None:
+            img = self.transform(image=img)['image'].float()
+        return img
 
     def __len__(self):
         return len(self.data)
@@ -23,7 +26,7 @@ class DeepHashingDataset(Dataset):
     def __getitem__(self, idx):
         filename = self.data[idx]
         try:
-            img = self.loader(filename)
+            img = self.get_image(filename)
             if self.transform:
                 img = self.transform(img)
         except Exception as e:

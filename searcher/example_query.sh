@@ -1,2 +1,2 @@
 #!/bin/bash
-curl -X POST http://localhost:5000/predictions/image-retrieval-v1.0 -T searcher/example.json
+curl -X POST https://ai.efiss.tech/predictions/image-retrieval-v1.0 -T searcher/example.json

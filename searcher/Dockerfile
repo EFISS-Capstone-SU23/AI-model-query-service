@@ -27,20 +27,18 @@ WORKDIR /app
 
 COPY searcher/config.properties searcher/deep_hashing_handler.py /app/
 COPY index/${VERSION} /app/index/${VERSION}
-COPY torchscripts_models/${MODEL_NAME}.pt /app/torchscripts_models/${MODEL_NAME}.pt
+COPY torchscripts_models/${MODEL_NAME}.pt /app/torchscripts_models/model-image-retrieval.pt
   
 # create model archive file packaging model artifacts and dependencies
 RUN torch-model-archiver -f \
-  --model-name=$MODEL_NAME \
+  --model-name=model-image-retrieval \
   --version=1.0 \
-  --serialized-file=/app/torchscripts_models/${MODEL_NAME}.pt \
+  --serialized-file=/app/torchscripts_models/model-image-retrieval.pt \
   --handler=/app/deep_hashing_handler.py \
   --extra-files "/app/index/${VERSION}/config.json,/app/index/${VERSION}/remap_index_to_img_path_dict.json,/app/index/${VERSION}/index.bin"
 
 RUN mkdir -p /app/model_store && \
-  mv ${MODEL_NAME}.mar /app/model_store
-
-ENV MODEL_NAME=relahash-medium-64bits
+  mv model-image-retrieval.mar /app/model_store
 
 COPY searcher/run.sh searcher/example.json /app/
 
