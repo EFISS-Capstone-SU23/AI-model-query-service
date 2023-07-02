@@ -14,6 +14,7 @@ from typing import List, Dict, Tuple, Union, Optional, Any, Literal
 from utils.datasets import DeepHashingDataset
 from time import time
 from datetime import datetime
+import albumentations as A
 
 
 class Indexer:
@@ -85,9 +86,13 @@ class Indexer:
         model.eval()
 
         # create data
-        dataset = DeepHashingDataset(database, transform=transforms.Compose([
-            transforms.Resize((image_size, image_size)),
-            transforms.ToTensor(),
+        dataset = DeepHashingDataset(database, transform=A.Compose([
+            A.Resize(image_size, image_size),
+            A.Normalize(
+                mean=[0.485, 0.456, 0.406],
+                std=[0.229, 0.224, 0.225],
+            ),
+            ToTensorV2(),
         ]))
 
         dataloader = torch.utils.data.DataLoader(
