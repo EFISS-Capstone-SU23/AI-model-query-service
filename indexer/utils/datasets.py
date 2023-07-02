@@ -27,8 +27,6 @@ class DeepHashingDataset(Dataset):
         filename = self.data[idx]
         try:
             img = self.get_image(filename)
-            if self.transform:
-                img = self.transform(img)
         except Exception as e:
             print(f"Error when loading image: {filename}")
             print(e)

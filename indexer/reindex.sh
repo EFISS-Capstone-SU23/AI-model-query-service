@@ -53,4 +53,4 @@ docker build -t efiss-ai:latest-cuda \
     --build-arg VERSION=$VERSION \
     -f searcher/Dockerfile.cuda .
 
-docker compose up -d
+# docker compose up -d

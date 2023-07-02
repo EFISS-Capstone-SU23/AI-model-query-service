@@ -15,6 +15,7 @@ from utils.datasets import DeepHashingDataset
 from time import time
 from datetime import datetime
 import albumentations as A
+from albumentations.pytorch import ToTensorV2
 
 
 class Indexer:
