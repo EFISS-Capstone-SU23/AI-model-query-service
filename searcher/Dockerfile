@@ -6,6 +6,9 @@ WORKDIR /install
 RUN apt-get update && apt-get -y upgrade \
   && apt-get install -y --no-install-recommends \
     openjdk-11-jre-headless \
+    build-essential \
+    cmake \
+    ffmpeg libsm6 libxext6 libgl1 \
     git \
     wget \
     g++ \
