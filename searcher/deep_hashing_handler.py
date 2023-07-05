@@ -74,6 +74,10 @@ class DeepHashingHandler(VisionHandler):
             ),
             ToTensorV2(),
         ])
+    
+    def transform(self, image):
+        image = self.image_processing(image=image)['image'].float()
+        return image
 
     def preprocess(self, data):
         """The preprocess function of MNIST program converts the input data to a float tensor
@@ -117,7 +121,7 @@ class DeepHashingHandler(VisionHandler):
             if isinstance(image, (bytearray, bytes)):
                 image = Image.open(io.BytesIO(image))
                 image = cv2.cvtColor(np.array(image), cv2.COLOR_BGR2RGB)
-                image = self.image_processing(image)
+                image = self.transform(image)
             else:
                 # if the image is a list
                 image = torch.FloatTensor(image)
