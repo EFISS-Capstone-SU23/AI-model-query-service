@@ -6,3 +6,7 @@ faiss-cpu
 torch
 torchvision
 torchaudio
+pyyaml
+captum
+albumentations
+opencv-python

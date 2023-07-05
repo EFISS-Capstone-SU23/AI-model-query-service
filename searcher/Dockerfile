@@ -17,8 +17,6 @@ RUN apt-get update && apt-get -y upgrade \
 COPY searcher/requirements.txt /install
 RUN pip install -r requirements.txt
 
-RUN pip install pyyaml captum
-
 ARG VERSION=1.2.0
 ARG MODEL_NAME=relahash-medium-64bits
 
