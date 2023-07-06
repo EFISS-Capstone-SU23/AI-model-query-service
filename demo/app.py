@@ -5,8 +5,8 @@ from flask import Flask, request, render_template, redirect, url_for
 
 app = Flask(__name__)
 
-# API_URL = "https://ai.efiss.tech/predictions/image-retrieval-v1.0"
-API_URL = "http://localhost:5000/predictions/image-retrieval-v1.0"
+API_URL = "https://ai.efiss.tech/predictions/image-retrieval-v1.0"
+# API_URL = "http://localhost:5000/predictions/image-retrieval-v1.0"
 
 @app.route('/', methods=['GET', 'POST'])
 def index():
@@ -26,8 +26,11 @@ def index():
             if response.status_code == 200:
                 data = response.json()
                 relevant_images = data['relevant']
-                relevant_images = ['https://storage.googleapis.com/efiss/data' + relevant_image[59:] for relevant_image in relevant_images]
+                # print(f"Relevant images: {relevant_images}")
+                relevant_images = ['https://storage.googleapis.com/efiss/data/output' + relevant_image.split('output')[1] for relevant_image in relevant_images]
+                print(f"Relevant images: {relevant_images}")
                 distances = data['distances']
+                print(f"Distances: {distances}")
                 return render_template('index.html', images=relevant_images, distances=distances, zip=zip)
     else:
         return render_template('index.html')
