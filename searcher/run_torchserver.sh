@@ -11,13 +11,13 @@ fi
 # mv module.zip searcher/
 # cd searcher
 
-model_name="relahash-medium-64bits"
-version="index/1.4.0"
+model_name="orthocos_medium_few_shot_10ep_aug_4096bit_shopee_category_phrase2"
+version="index/2.0.1"
 
 torch-model-archiver -f \
     --model-name $model_name \
     --version 1.0 \
-    --serialized-file "torchscripts_models/relahash_tf_efficientnetv2_b3_relahash_64_deepfashion2_200_0.0005_adam.pt" \
+    --serialized-file "torchscripts_models/orthocos_medium_few_shot_10ep_aug_4096bit_shopee_category_phrase2.pt" \
     --handler searcher/deep_hashing_handler.py \
     --extra-files \
 "$version/config.json,\
@@ -31,7 +31,7 @@ mv $model_name.mar model_store/
 
 torchserve --stop
 
-CUDA_VISIBLE_DEVICES=1 torchserve --start \
+CUDA_VISIBLE_DEVICES=0 torchserve --start \
 --model-store model_store \
 --ts-config searcher/config.properties \
 --ncs --models image-retrieval-v1.0=$model_name.mar
