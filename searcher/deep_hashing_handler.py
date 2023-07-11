@@ -148,7 +148,7 @@ class DeepHashingHandler(VisionHandler):
         logger.info(f"img_tensor.shape: {img_tensor.shape}")
         logger.info(f"topk_batch: {topk_batch}")
         logger.info(f"img_tensor.device: {img_tensor.device}")
-        with torch.no_grad(), amp.autocast():
+        with torch.no_grad():
             img_tensor = img_tensor.to(self.device)
             features = self.model(img_tensor)
         logging.info(f"Hashcodes shape: {features.shape}")
