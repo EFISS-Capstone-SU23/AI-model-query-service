@@ -108,7 +108,7 @@ class Indexer:
         logging.info("Compute hashcodes...")
         # compute hashcodes
         hashcodes = []
-        with torch.no_grad(), amp.autocast():
+        with torch.no_grad():
             pbar = tqdm(
                 dataloader,
                 desc="Compute hashcodes",

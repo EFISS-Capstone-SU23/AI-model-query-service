@@ -5,6 +5,7 @@ from flask import Flask, request, render_template, redirect, url_for
 
 app = Flask(__name__)
 
+# API_URL = "http://10.66.66.2:5000/predictions/image-retrieval-v1.0"
 API_URL = "https://ai.efiss.tech/predictions/image-retrieval-v1.0"
 # API_URL = "http://localhost:5000/predictions/image-retrieval-v1.0"
 
