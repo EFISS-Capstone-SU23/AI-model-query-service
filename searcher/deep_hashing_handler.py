@@ -64,9 +64,13 @@ class DeepHashingHandler(VisionHandler):
         self.model.eval()
         logger.info(f'Model loaded successfully from {model_pt_path}: {self.model}')
 
+        self.metric_learning_model = torch.jit.load(os.path.join(model_dir, "metric_learning_model.pt"), map_location=self.device)
+        self.metric_learning_model.eval()
+
         # Load the index
         logger.info(f"Loading index ...")
         self.index = faiss.read_index_binary(os.path.join(model_dir, "index.bin"))
+        self.metric_learning_index = faiss.read_index(os.path.join(model_dir, "metric_learning_index.bin"))
 
         if os.path.isfile(os.path.join(model_dir, "remap_index_to_img_path_dict.json")):
             with open(os.path.join(model_dir, "remap_index_to_img_path_dict.json")) as f:
@@ -172,6 +176,38 @@ class DeepHashingHandler(VisionHandler):
         # If there is any images that have the same distance as the top 1 result,
         # we will use features to compute the distance and sort them.
         # This is ensure that if the query exists in the database, it will be the top 1 result.
+        output_I: List[List[int]] = []
+        for i, topk in enumerate(topk_batch):
+            top1_distance = D[i, 0]
+            collision_indices: List[int] = []
+            for j in range(topk):
+                if D[i, j] == top1_distance:
+                    collision_indices.append(j)
+                else:
+                    break
+
+            if len(collision_indices) > 0:
+                logger.info(f"Collision indices: {collision_indices}")
+                collision_db_indices = I[i, collision_indices]
+                logger.info(f"Collision db indices: {collision_db_indices}")
+                # https://stackoverflow.com/a/76493512/11806050
+                collision_ids: List[int] = collision_db_indices
+                id_selector = faiss.IDSelectorArray(collision_ids)
+                with torch.no_grad():
+                    float_query_vector = self.metric_learning_model(img_tensor)
+
+                collision_reranked_distances, collision_reranked_indices = self.metric_learning_index.search(float_query_vector, len(collision_indices), params=faiss.SearchParametersIVF(sel=id_selector))
+                logger.info(f"collision_reranked distances: {collision_reranked_distances}")
+                logger.info(f"collision_reranked indices: {collision_reranked_indices}")
+                
+                logger.info(f"Before: {I[i, :]}")
+                for j, idx in enumerate(collision_indices):
+                    I[i, idx] = collision_reranked_indices[j]
+                logger.info(f"After reranking: {I[i, :]}")
+
+            output_I.append(I[i, :])
+                
+        I = torch.tensor(output_I)
 
         return D, I, debug
     
