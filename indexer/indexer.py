@@ -25,6 +25,7 @@ class Indexer:
     def create_index(
         self,
         model_path: str,
+        metric_model_path: Optional[str],
         database: List[str],
         image_size: int = 256,
         new_index_database_version: str = "1.0.0",
@@ -47,9 +48,15 @@ class Indexer:
         hashcodes = self.compute_hashcodes(
             model_path=model_path, image_size=image_size, database=database,
         )
+
+        continuous_features: Optional[torch.Tensor] = metric_model_path and self.compute_metric_features(
+            model_path=metric_model_path, image_size=image_size, database=database,
+        )
+
         # dump index
         self.dump_index(
             hashcodes=hashcodes,
+            features=continuous_features,
             database=database,
             dump_index_path=self.configs['dump_index_path'],
             new_index_database_version=new_index_database_version,
@@ -128,10 +135,69 @@ class Indexer:
         logging.info("Finish computing hashcodes")
         return hashcodes
 
+    def compute_metric_features(
+        self,
+        model_path: str,
+        database: List[str],
+        image_size: int = 256,
+    ):
+        """
+        Args:
+            model_path: torchscript model path
+            database: List of image path
+        """
+        logging.info("Begin computing features")
+        logging.info(f"Loading Model from path: {model_path}")
+        # load model
+        model = torch.jit.load(model_path, map_location=self.configs["device"])
+        model.eval()
+
+        # create data
+        dataset = DeepHashingDataset(database, transform=A.Compose([
+            A.Resize(image_size, image_size),
+            A.Normalize(
+                mean=[0.485, 0.456, 0.406],
+                std=[0.229, 0.224, 0.225],
+            ),
+            ToTensorV2(),
+        ]))
+
+        dataloader = torch.utils.data.DataLoader(
+            dataset,
+            batch_size=self.configs["batch_size"],
+            num_workers=self.configs["num_workers"],
+            shuffle=False,
+            pin_memory=True,
+            collate_fn=dataset.collate_fn,
+        )
+
+        logging.info("Compute features...")
+        # compute features
+        features = []
+        with torch.no_grad():
+            pbar = tqdm(
+                dataloader,
+                desc="Compute features",
+                total=len(dataloader),
+                ascii=True,
+                ncols=100,
+                disable=True
+            )
+            for batch in pbar:
+                batch = batch.to(self.configs["device"])
+                hashcode = model(batch)
+                features.append(hashcode.cpu())
+
+        features = torch.cat(features, dim=0)
+        logging.info(f"Features shape: {features.shape}")
+        logging.info("Finish computing features")
+        return features
+
     def dump_index(
         self,
         model_path: str,
         hashcodes: np.ndarray,
+        features: Optional[torch.Tensor],
         database: List[str],
         dump_index_path: str,
         new_index_database_version: str,
