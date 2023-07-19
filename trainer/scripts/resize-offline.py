@@ -17,10 +17,12 @@ def rename_path_to_original_extension(img_path: str) -> Optional[str]:
         with Image.open(img_path) as img:
             img.verify()
             image_format = img.format.lower()
-            new_filename = img_path.replace('.jpeg', f'.{image_format}')
-            # os.rename(img_path, new_filename)
-            shutil.move(img_path, new_filename)
-            return new_filename
+            if image_format == 'jpeg' and not (img_path.endswith('.jpg') or img_path.endswith('.jpeg')):
+                new_filename = img_path.replace('.jpeg', '.jpg')
+                new_filename = img_path.replace('.jpg', f'.{image_format}')
+                # os.rename(img_path, new_filename)
+                shutil.move(img_path, new_filename)
+                return new_filename
     except Exception as e:
         print(e)
         return None
@@ -39,8 +41,8 @@ for file_path in tqdm(img_paths):
         print(f"Corrupted image: {file_path}")
         corrupted_images.append(file_path)
         continue
-    elif not _file_path.endswith('.jpeg'):
-        print(f"Not jpeg image, renamed from {file_path} to {_file_path}")
+    elif file_path != _file_path:
+        print(f"Renamed image from {file_path} to {_file_path}")
     file_path = _file_path
     abs_path = os.path.abspath(file_path)
     if file_path.endswith('.jpeg'):
