@@ -115,7 +115,7 @@ class Indexer:
                 total=len(dataloader),
                 ascii=True,
                 ncols=100,
-                disable=True
+                disable=False
             )
             for batch in pbar:
                 batch = batch.to(self.configs["device"])
@@ -124,6 +124,7 @@ class Indexer:
         hashcodes = torch.cat(hashcodes, dim=0)
         self.configs["hashcode_length"] = hashcodes.shape[1]
         logging.info(f"Hashcodes shape: {hashcodes.shape}")
+        del model, dataset, dataloader
         hashcodes = self.convert_int(hashcodes)
         logging.info("Finish computing hashcodes")
         return hashcodes
@@ -197,7 +198,7 @@ class Indexer:
             # replace 'resize_224x224' with output
             img_path = img_path.replace("resize_224x224", "output")
             img_path = img_path.replace("resize_300x300", "output")
-            img_path = img_path.replace("resize_600x600", "output")
+            img_path = img_path.replace("resize_640x640", "output")
             
             remap_index_to_img_path_dict[str(index)] = img_path
             remap_img_path_to_index_dict[img_path] = str(index)
@@ -210,6 +211,7 @@ class Indexer:
     @staticmethod
     def convert_int(codes):
         out = codes.sign().cpu().numpy().astype(int)
+        del codes
         out[out == -1] = 0
         out = np.packbits(out, axis=-1)
         return out

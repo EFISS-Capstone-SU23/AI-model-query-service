@@ -20,6 +20,15 @@ from albumentations.pytorch import ToTensorV2
 logger = logging.getLogger(__name__)
 
 class DeepHashingHandler(VisionHandler):
+
+    @staticmethod
+    def data_uri_to_cv2_img(uri: str) -> np.ndarray:
+        # https://stackoverflow.com/a/42538142/11806050
+        encoded_data = uri.split(',')[-1]
+        nparr = np.frombuffer(base64.b64decode(encoded_data), np.uint8)
+        img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+        return img
+
     def __init__(self):
         super(DeepHashingHandler, self).__init__()
         self.initialized = False
@@ -111,20 +120,12 @@ class DeepHashingHandler(VisionHandler):
             else:
                 logger.error(f"Unknown input type: {type(req)}")
             topk: int = req.get("topk", 10)
-            image = req.get("image")
+            image: str = req.get("image")
             debug: bool = req.get("debug", False)  # NOTE: debug mode is set for all images in a batch
-            if isinstance(image, str):
-                # if the image is a string of bytesarray.
-                image = base64.b64decode(image)
 
-            # If the image is sent as bytesarray
-            if isinstance(image, (bytearray, bytes)):
-                image = Image.open(io.BytesIO(image))
-                image = cv2.cvtColor(np.array(image), cv2.COLOR_BGR2RGB)
-                image = self.transform(image)
-            else:
-                # if the image is a list
-                image = torch.FloatTensor(image)
+            image = self.data_uri_to_cv2_img(image)
+            image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+            image = self.transform(image)
 
             images.append(image)
             topk_batch.append(topk)
