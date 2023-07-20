@@ -23,6 +23,8 @@ def rename_path_to_original_extension(img_path: str) -> Optional[str]:
                 # os.rename(img_path, new_filename)
                 shutil.move(img_path, new_filename)
                 return new_filename
+            else:
+                return img_path
     except Exception as e:
         print(e)
         return None
