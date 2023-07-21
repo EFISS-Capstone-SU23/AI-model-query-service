@@ -38,6 +38,11 @@ resized_img_paths = []
 
 print("Begin resizing images...")
 for file_path in tqdm(img_paths):
+    __new_path = file_path.replace('output/', f'resize_{SIZE}x{SIZE}/')
+    if os.path.exists(__new_path):
+        resized_img_paths.append(__new_path)
+        print(f"Skip resized image: {file_path}")
+        continue
     _file_path = rename_path_to_original_extension(file_path)
     if _file_path is None:
         print(f"Corrupted image: {file_path}")
