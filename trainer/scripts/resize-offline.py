@@ -47,24 +47,30 @@ for file_path in tqdm(img_paths):
         print(f"Renamed image from {file_path} to {_file_path}")
     file_path = _file_path
     abs_path = os.path.abspath(file_path)
-    if file_path.endswith('.jpeg'):
-        with open(abs_path, 'rb') as f:
-            check_chars = f.read()[-2:]
-        if check_chars != b'\xff\xd9':
-            print(f"Not complete image: {abs_path}")
+    try:
+        if file_path.endswith('.jpeg'):
+            with open(abs_path, 'rb') as f:
+                check_chars = f.read()[-2:]
+            if check_chars != b'\xff\xd9':
+                print(f"Not complete image: {abs_path}")
+                corrupted_images.append(file_path)
+                continue
+        
+        img = cv2.imread(abs_path)
+        img = cv2.resize(img, (SIZE, SIZE))
+        new_path = file_path.replace('output/', f'resize_{SIZE}x{SIZE}/')
+        os.makedirs(os.path.dirname(new_path), exist_ok=True)
+        result = cv2.imwrite(new_path, img)
+        if not result:
+            print('Error: ', file_path)
             corrupted_images.append(file_path)
-            continue
-    
-    img = cv2.imread(abs_path)
-    img = cv2.resize(img, (SIZE, SIZE))
-    new_path = file_path.replace('output/', f'resize_{SIZE}x{SIZE}/')
-    os.makedirs(os.path.dirname(new_path), exist_ok=True)
-    result = cv2.imwrite(new_path, img)
-    if not result:
+        else:
+            resized_img_paths.append(new_path)
+    except Exception as e:
+        print(e)
         print('Error: ', file_path)
         corrupted_images.append(file_path)
-    else:
-        resized_img_paths.append(new_path)
+        continue
 
 print("Done resizing images!")
 print("coprrupted images: ", corrupted_images)
