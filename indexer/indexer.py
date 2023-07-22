@@ -217,6 +217,7 @@ class Indexer:
         logging.info("Dump remap_index_to_img_path_dict...")
         remap_index_to_img_path_dict = self.create_bi_directional_dictionary(database)
         logging.info("Done!")
+
         logging.info("Dump index...")
         if index_mode == "default":
             logging.info("Use faiss.IndexBinaryFlat")
@@ -238,6 +239,18 @@ class Indexer:
         index_path = os.path.join(dump_index_path, new_index_database_version)
         os.makedirs(index_path, exist_ok=True)
         faiss.write_index_binary(index, os.path.join(index_path, "index.bin"))
+        logging.info(f"Dumped index to {index_path}")
+
+        if features is not None:
+            logging.info(f"Creating metric learning index")
+
+            # As we only use metric learning for reranking collision samples,
+            # we will use IndexFlatL2 with no quantization or any approximation
+            logging.info(f"Use faiss.IndexFlatL2")
+            metric_index = faiss.IndexFlatL2(features.shape[1])
+            metric_index.add(features.numpy())
+            faiss.write_index(metric_index, os.path.join(index_path, "metric_learning_index.bin"))
+            logging.info(f"Dumped metric learning index to {index_path}")
 
         # update configs
         self.configs["index_database_version"] = new_index_database_version
