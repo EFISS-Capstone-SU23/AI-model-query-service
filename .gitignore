@@ -184,3 +184,5 @@ index/
 *.json
 *.txt
 index
+*.pth
+*.pt
