@@ -12,6 +12,9 @@ fi
 # cd searcher
 
 model_name="orthocos_medium_few_shot_10ep_aug_4096bit_shopee_category_phrase2"
+metric_learning_model="metric-learning-model-small-24ep-aug.pt"
+
+cp torchscripts_models/$metric_learning_model /tmp/metric_learning_model.pt
 version="index/2.0.1"
 
 torch-model-archiver -f \
@@ -22,8 +25,11 @@ torch-model-archiver -f \
     --extra-files \
 "$version/config.json,\
 $version/remap_index_to_img_path_dict.json,\
-$version/index.bin"
+$version/index.bin,\
+/tmp/metric_learning_model.pt"
 # module.zip"
+
+rm -v /tmp/metric_learning_model.pt
 
 mkdir -p model_store
 mv $model_name.mar model_store/
