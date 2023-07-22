@@ -186,3 +186,6 @@ index/
 index
 *.pth
 *.pt
+wandb/
+runs/
+lib/
