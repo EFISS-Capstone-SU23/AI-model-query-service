@@ -404,7 +404,7 @@ if __name__ == '__main__':
         convert_ath_json(json_dir='../../Downloads/athena/')  # images folder
 
     elif source == 'deepfashion2':
-        convert_coco_json('trainer/data/',  # directory with *.json
+        convert_coco_json('data/',  # directory with *.json
                           use_segments=False,
                           cls91to80=False)
     # zip results
