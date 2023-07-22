@@ -264,6 +264,7 @@ class Indexer:
             img_path = img_path.replace("resize_224x224", "output")
             img_path = img_path.replace("resize_300x300", "output")
             img_path = img_path.replace("resize_640x640", "output")
+            img_path = img_path.replace("resize_600x600", "output")
             
             remap_index_to_img_path_dict[str(index)] = img_path
             remap_img_path_to_index_dict[img_path] = str(index)
