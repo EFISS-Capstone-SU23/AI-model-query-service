@@ -10,3 +10,4 @@ pyyaml
 captum
 albumentations
 opencv-python
+protobuf==3.20.*
