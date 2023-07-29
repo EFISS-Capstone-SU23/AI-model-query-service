@@ -8,5 +8,5 @@ bash indexer/increase_version.sh
 bash indexer/reindex.sh
 
 echo "Start syncing data to GCS"
-gsutil -m rsync -r /media/saplab/Data_Win/RSI_Do_An/AnhND/Dynamic-Crawler-Tool/output gs://efiss/data/output > /dev/null 2>&1
+gsutil -m rsync -r /home/saplab/thaiminhpv/relahash/rsi-prototype/data/shopee_29-7/product_images gs://efiss/data/product_images > /dev/null 2>&1
 echo Done

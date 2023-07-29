@@ -196,10 +196,10 @@ class Indexer:
         remap_img_path_to_index_dict = {}
         for index, img_path in enumerate(database):
             # replace 'resize_224x224' with output
-            img_path = img_path.replace("resize_224x224", "output")
-            img_path = img_path.replace("resize_300x300", "output")
-            img_path = img_path.replace("resize_640x640", "output")
-            img_path = img_path.replace("resize_600x600", "output")
+            img_path = img_path.replace("resize_224x224", "product_images")
+            img_path = img_path.replace("resize_300x300", "product_images")
+            img_path = img_path.replace("resize_640x640", "product_images")
+            img_path = img_path.replace("resize_600x600", "product_images")
             
             remap_index_to_img_path_dict[str(index)] = img_path
             remap_img_path_to_index_dict[img_path] = str(index)

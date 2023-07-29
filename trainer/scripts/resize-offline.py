@@ -36,7 +36,7 @@ with open('_database_info.txt', 'r') as f:
 corrupted_images = []
 resized_img_paths = []
 
-source = 'output/'
+source = 'product_images/'
 
 print("Begin resizing images...")
 for file_path in tqdm(img_paths):
