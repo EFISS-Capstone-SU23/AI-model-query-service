@@ -5,11 +5,14 @@ from PIL import Image
 import numpy as np
 from tqdm import tqdm
 
+# NOTE: This will not go into the generated JSON content, so this path can be customized
+BASE_DIR = 'data/deepfashion2'
+
 def deepfashion2_to_coco(mode: Literal['train', 'validation'] = "train", output_json_file: str = "data/deepfashion2.json"):
     """https://github.com/switchablenorms/DeepFashion2/blob/master/evaluation/deepfashion2_to_coco.py"""
 
-    JSON_PATH = f'data/{mode}/annos/'
-    IMG_PATH = f'data/{mode}/image/'
+    JSON_PATH = f'{BASE_DIR}/{mode}/annos/'
+    IMG_PATH = f'{BASE_DIR}/{mode}/image/'
 
     dataset = {
         "info": {},
@@ -242,10 +245,8 @@ def deepfashion2_to_coco(mode: Literal['train', 'validation'] = "train", output_
                             'segmentation': seg,
                         })
 
-    # json_name = 'data/deepfashion2.json'
-    json_name = output_json_file
-    with open(json_name, 'w') as f:
+    with open(output_json_file, 'w') as f:
         json.dump(dataset, f)
 
-deepfashion2_to_coco(mode='train', output_json_file='data/train_deepfashion2.json')
-deepfashion2_to_coco(mode='validation', output_json_file='data/val_deepfashion2.json')
+deepfashion2_to_coco(mode='train', output_json_file=f'{BASE_DIR}/train_deepfashion2.json')
+deepfashion2_to_coco(mode='validation', output_json_file=f'{BASE_DIR}/val_deepfashion2.json')
