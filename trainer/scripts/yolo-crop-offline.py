@@ -1,29 +1,24 @@
 """
-This scripts use YOLOv8 to offline cropping the images in the database, then resize it
+This scripts use YOLOv8 to offline cropping the images in the database to create new dataset
 """
 
-from typing import Optional
-import shutil
-import os
-import sys
-from tqdm import tqdm
-from PIL import Image
-import cv2
-import numpy as np
-import albumentations as A
 import pandas as pd
-import json
+import dask.dataframe as dd
 from ultralytics import YOLO
+import matplotlib.pyplot as plt
+import numpy as np
 import cv2
+import pandas as pd
+from tqdm.auto import tqdm
+import os
 
-SIZE = 300
-
-model = YOLO('torchscripts_models/yolo/yolov8n_12ep_640x_23-7.pt')
+model = YOLO('torchscripts_models/yolo/yolov8n_12ep_24-7_32.5mAP.pt')
 model.to('cuda:0')
+tqdm.pandas()
 
-outliers = []
+df = pd.read_csv('data/shopee/shopee-data-for-training-filter-corrupted.csv')
 
-def crop_image(img: np.ndarray) -> np.ndarray:
+def crop_image(img: np.ndarray) -> list[np.ndarray]:
     """
     Crop the image using YOLOv8
     
@@ -35,101 +30,63 @@ def crop_image(img: np.ndarray) -> np.ndarray:
     """
     result = model.predict(
         source=img,
-        conf=0.03,  # set low-confidence threshold instead of 0.25
+        conf=0.05,
+        device='0',
         save=False,
         verbose=False
     )[0]
     if len(result.boxes.xyxy) == 0:
-        return None
-    x, y, _x, _y = list(result.boxes.xyxy[0].int())
-    return result.orig_img[y:_y, x:_x]
+        print("No object detected")
+        return []
+    
+    out = []
+    for box in result.boxes.xyxy:
+        x, y, _x, _y = list(box.int())
+        out.append(result.orig_img[y:_y, x:_x])
+    
+    return out
 
-def rename_path_to_original_extension(img_path: str) -> Optional[str]:
+### Begin
+_df = df
+num_threads = 10
+ddf = dd.from_pandas(_df, npartitions=num_threads)
+
+pbar = tqdm(total=len(df))
+
+output_datadir = "data/shopee_crop_yolo/images"
+def crop_image_to_multiple_images(image_path: str) -> list[str]:
+    """
+    Crop an image with YOLOv5 into multiple images. Return the paths of the cropped images.
+    """
+    img: np.ndarray = cv2.imread(image_path)
+    # img_extension: str = image_path.split(".")[-1]
+    img_name: str = image_path.split("/")[-1].split(".")[0]
+
     try:
-        with Image.open(img_path) as img:
-            img.verify()
-            image_format = img.format.lower()
-            if image_format == 'jpeg' and not (img_path.endswith('.jpg') or img_path.endswith('.jpeg')):
-                new_filename = img_path.replace('.jpeg', '.jpg')
-                new_filename = img_path.replace('.jpg', f'.{image_format}')
-                # os.rename(img_path, new_filename)
-                shutil.move(img_path, new_filename)
-                return new_filename
-            else:
-                return img_path
+        cropped_images: list[np.ndarray] = crop_image(img)
     except Exception as e:
-        print(e)
-        return None
+        print(f"Error cropping image {image_path}: {e}")
 
-# for now, we will read from the resized database_info.txt
-with open('database_info.txt', 'r') as f:
-    lines = f.readlines()
-    img_paths = [line.strip() for line in lines]
+    cropped_image_paths: list[str] = []
+    for i, cropped_image in enumerate(cropped_images):
+        cropped_image_path: str = f"{output_datadir}/{img_name}_crop{i}.jpg"
+        cv2.imwrite(cropped_image_path, cropped_image)
+        cropped_image_paths.append(cropped_image_path)
 
-corrupted_images = []
-resized_img_paths = []
+    pbar.update(1)
+    return cropped_image_paths
 
-print("Begin resizing images...")
-for file_path in tqdm(img_paths):
-    file_path = file_path.replace(f'yolo_resize_{SIZE}x{SIZE}/', 'resize_600x600/')
-    __new_path = file_path.replace('resize_600x600/', f'yolo_resize_{SIZE}x{SIZE}/')
-    if os.path.exists(__new_path):
-        resized_img_paths.append(__new_path)
-        print(f"Skip resized image: {file_path}")
-        continue
+def df_crop_image(df: pd.DataFrame) -> pd.DataFrame:
+    df['cropped_img_paths'] = df['images'].apply(crop_image_to_multiple_images)
+    pbar.update(1)
+    return df
 
-    # _file_path = rename_path_to_original_extension(file_path)
-    _file_path = file_path
-    if _file_path is None:
-        print(f"Corrupted image: {file_path}")
-        corrupted_images.append(file_path)
-        continue
-    elif file_path != _file_path:
-        print(f"Renamed image from {file_path} to {_file_path}")
-    file_path = _file_path
-    abs_path = os.path.abspath(file_path)
-    try:
-        # if file_path.endswith('.jpeg'):
-        #     with open(abs_path, 'rb') as f:
-        #         check_chars = f.read()[-2:]
-        #     if check_chars != b'\xff\xd9':
-        #         print(f"Not complete image: {abs_path}")
-        #         corrupted_images.append(file_path)
-        #         continue
-        
-        img = cv2.imread(abs_path)
-        _img = crop_image(img)
-        if _img is None:
-            print(f"No object detected: {abs_path}")
-            _img = img
-            outliers.append(file_path)
-        img = cv2.resize(_img, (SIZE, SIZE))
-        new_path = file_path.replace('resize_600x600/', f'yolo_resize_{SIZE}x{SIZE}/')
-        os.makedirs(os.path.dirname(new_path), exist_ok=True)
-        if os.path.exists(new_path):
-            raise Exception(f"File already exists: {new_path}")
-        result = cv2.imwrite(new_path, img)
-        if not result:
-            print('Error: ', file_path)
-            corrupted_images.append(file_path)
-        else:
-            resized_img_paths.append(new_path)
-    except Exception as e:
-        if "File already exists" in str(e):
-            raise e
-        print(e)
-        print('Error: ', file_path)
-        corrupted_images.append(file_path)
-        continue
+# https://stackoverflow.com/questions/45545110/make-pandas-dataframe-apply-use-all-cores
 
-print("Done resizing images!")
-print("coprrupted images: ", corrupted_images)
+# with pbar:
+#     prep = ddf.map_partitions(df_crop_image, meta={'images': 'str', 'class_idx': np.int64, 'cropped_img_paths': 'str'})
+#     res: pd.DataFrame = prep.compute(scheduler='threads')
+#     res.to_csv("data/shopee_crop_yolo/cropped_images.csv", index=False)
 
-with open(f'yolo_resized_{SIZE}x{SIZE}_database_info.txt', 'w') as f:
-    f.write('\n'.join(resized_img_paths))
-
-with open('corrupted_images.txt', 'w') as f:
-    f.write('\n'.join(corrupted_images))
-
-with open('outliers.txt', 'w') as f:
-    f.write('\n'.join(outliers))
+df['cropped_img_paths'] = df['images'].progress_apply(crop_image_to_multiple_images)
+df.to_csv('data/shopee_crop_yolo/cropped_dataset.csv', index=False)
