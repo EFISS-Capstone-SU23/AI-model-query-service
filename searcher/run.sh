@@ -1,7 +1,7 @@
 #!/bin/bash
 . /root/.bashrc
 (
-    sleep 10
+    sleep 120
     echo "Warming up..."
     curl -X POST http://localhost:5000/predictions/image-retrieval-v1.0 -T /app/example.json
     curl -X POST http://localhost:5000/predictions/image-retrieval-v1.0 -T /app/example.json
