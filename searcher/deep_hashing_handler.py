@@ -201,6 +201,9 @@ class DeepHashingHandler(VisionHandler):
         if len(set(topk_batch)) == 1:
             # all topk are the same, we can use batch search
             D, I = self.index.search(hashcodes, topk_batch[0])
+            # TODO: topk * 4 to ensure there are too few images after filtered by product
+            # TODO: truncate the result img path to only the image id, filter out the final
+            # _crop1, _crop2, _crop3, _crop4. Remember to handle the file extension correctly
         else:
             I: list = []
             for i, topk in enumerate(topk_batch):
