@@ -35,20 +35,20 @@ set -x
 
 docker build -t efiss-ai:latest \
     -t efiss-ai:$VERSION-cpu \
-    -t asia-southeast1-docker.pkg.dev/even-acumen-386115/efiss/efiss-ai:latest \
-    -t asia-southeast1-docker.pkg.dev/even-acumen-386115/efiss/efiss-ai:$VERSION-cpu \
+    -t asia-southeast1-docker.pkg.dev/efiss-394203/efiss/efiss-ai:latest \
+    -t asia-southeast1-docker.pkg.dev/efiss-394203/efiss/efiss-ai:$VERSION-cpu \
     --build-arg MODEL_NAME=$MODEL_NAME \
     --build-arg VERSION=$VERSION \
     -f searcher/Dockerfile .
 
-docker push asia-southeast1-docker.pkg.dev/even-acumen-386115/efiss/efiss-ai:$VERSION-cpu
-docker push asia-southeast1-docker.pkg.dev/even-acumen-386115/efiss/efiss-ai:latest
+docker push asia-southeast1-docker.pkg.dev/efiss-394203/efiss/efiss-ai:$VERSION-cpu
+docker push asia-southeast1-docker.pkg.dev/efiss-394203/efiss/efiss-ai:latest
 
 
 # docker build -t efiss-ai:latest-cuda \
 #     -t efiss-ai:$VERSION-cuda \
-#     -t asia-southeast1-docker.pkg.dev/even-acumen-386115/efiss/efiss-ai:latest-cuda \
-#     -t asia-southeast1-docker.pkg.dev/even-acumen-386115/efiss/efiss-ai:$VERSION-cuda \
+#     -t asia-southeast1-docker.pkg.dev/efiss-394203/efiss/efiss-ai:latest-cuda \
+#     -t asia-southeast1-docker.pkg.dev/efiss-394203/efiss/efiss-ai:$VERSION-cuda \
 #     --build-arg MODEL_NAME=$MODEL_NAME \
 #     --build-arg VERSION=$VERSION \
 #     -f searcher/Dockerfile.cuda .
