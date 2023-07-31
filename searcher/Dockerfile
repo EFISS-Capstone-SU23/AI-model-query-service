@@ -22,6 +22,7 @@ RUN pip install -r requirements.txt
 
 ARG VERSION=1.2.0
 ARG MODEL_NAME=relahash-medium-64bits
+ARG YOLO_MODEL_PATH=torchscripts_models/yolo/yolo.pt
 
 RUN mkdir -p /app
 WORKDIR /app
@@ -29,6 +30,7 @@ WORKDIR /app
 COPY searcher/config.properties searcher/deep_hashing_handler.py /app/
 COPY index/${VERSION} /app/index/${VERSION}
 COPY torchscripts_models/${MODEL_NAME}.pt /app/torchscripts_models/model-image-retrieval.pt
+COPY ${YOLO_MODEL_PATH}.pt /app/torchscripts_models/yolo.pt
   
 # create model archive file packaging model artifacts and dependencies
 RUN torch-model-archiver -f \
@@ -36,7 +38,7 @@ RUN torch-model-archiver -f \
   --version=1.0 \
   --serialized-file=/app/torchscripts_models/model-image-retrieval.pt \
   --handler=/app/deep_hashing_handler.py \
-  --extra-files "/app/index/${VERSION}/config.json,/app/index/${VERSION}/remap_index_to_img_path_dict.json,/app/index/${VERSION}/index.bin"
+  --extra-files "/app/index/${VERSION}/config.json,/app/index/${VERSION}/remap_index_to_img_path_dict.json,/app/index/${VERSION}/index.bin,/app/torchscripts_models/yolo.pt"
 
 RUN mkdir -p /app/model_store && \
   mv model-image-retrieval.mar /app/model_store
