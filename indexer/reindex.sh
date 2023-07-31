@@ -25,7 +25,7 @@ bash indexer/extract_datalake.sh /media/saplab/MinhNVMe/relahash/data/shopee_29-
 
 set -x
 
-/home/saplab/anaconda3/envs/thaiminhpv/bin/python indexer/main.py \
+/home/saplab/anaconda3/envs/thaiminhpv/bin/python indexer/indexer.py \
     --database database_info.txt \
     --model_path torchscripts_models/$MODEL_NAME.pt \
     --device cuda:0 \
