@@ -197,8 +197,6 @@ class DeepHashingHandler(VisionHandler):
             # all topk are the same, we can use batch search
             D, I = self.index.search(hashcodes, topk_batch[0])
             # TODO: topk * 4 to ensure there are too few images after filtered by product
-            # TODO: truncate the result img path to only the image id, filter out the final
-            # _crop1, _crop2, _crop3, _crop4. Remember to handle the file extension correctly
         else:
             I: list = []
             for i, topk in enumerate(topk_batch):
@@ -235,13 +233,52 @@ class DeepHashingHandler(VisionHandler):
         logger.info(f"Postprocess: I: {I}")
         logger.info(f"Postprocess: D: {D}")
         img_paths: list[list[int]] = [[self.remap_index_to_img_path_dict[str(idx)] for idx in idxs] for idxs in I]
-        responses = [{
+        responses: list[dict] = [{
             "index_database_version": self.setup_config["index_database_version"],
             "relevant": img_path,
             "distances": dists.tolist()
         } for img_path, dists in zip(img_paths, D)]
         logger.info(f"Postprocess: responses: {responses}")
+        responses: list[dict] = self.merge_images_with_same_product_id(responses)
+        logger.info(f"Responses after merged: {responses}")
         return responses
+
+    
+    @staticmethod
+    def merge_images_with_same_product_id(responses: list[dict[str, list | str]]) -> list[dict[str, list | str]]:
+        """
+        Merge images with the same product id, uses the first image of each product
+
+        Args:
+            responses (list[Dict]): list of responses
+        
+        Returns:
+            responses (list[Dict]): list of responses
+        """
+        out_responses = []
+        response: dict[str, list | str]
+        for response in responses:
+            out_response = {
+                "index_database_version": response["index_database_version"],
+                "relevant": [],
+                "distances": []
+            }
+            img_path_to_dist: dict[str, int] = {}
+            for img_path, dist in zip(response["relevant"], response["distances"]):
+                product = img_path.split("_crop")[0]
+                if product not in img_path_to_dist:
+                    img_path_to_dist[product] = dist
+                else:
+                    if dist < img_path_to_dist[product]:
+                        raise Exception("The distances are not sorted!")
+                    else:
+                        continue
+                
+            for img_path, dist in img_path_to_dist.items():
+                out_response["relevant"].append(img_path)
+                out_response["distances"].append(dist)
+
+        return out_responses
 
     @staticmethod
     def convert_int(codes):
