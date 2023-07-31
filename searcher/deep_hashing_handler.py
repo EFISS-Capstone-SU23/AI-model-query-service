@@ -9,7 +9,6 @@ import zipfile
 import os
 import json
 import logging
-from typing import Dict, List, Tuple
 from torchvision import transforms
 import torch.cuda.amp as amp
 import cv2
@@ -125,7 +124,7 @@ class DeepHashingHandler(VisionHandler):
         """The preprocess function of MNIST program converts the input data to a float tensor
 
         Args:
-            data (List): Input data from the request is in the form of a Tensor
+            data (list): Input data from the request is in the form of a Tensor
                 - row: {
                     "topk": 10,
                     "image": "base64 encoded image"
@@ -135,7 +134,6 @@ class DeepHashingHandler(VisionHandler):
         """
         images: list[torch.Tensor] = []
         topk_batch: list[int] = []
-        debug = False
 
         for row in data:
             # Compat layer: normally the envelope should just return the data
@@ -154,7 +152,6 @@ class DeepHashingHandler(VisionHandler):
                 logger.error(f"Unknown input type: {type(req)}")
             topk: int = req.get("topk", 10)
             image: str = req.get("image")
-            debug: bool = req.get("debug", False)  # NOTE: debug mode is set for all images in a batch
 
             image: np.ndarray = self.data_uri_to_cv2_img(image)
             _images: list[np.ndarray] = self.crop_image(image)
@@ -172,22 +169,20 @@ class DeepHashingHandler(VisionHandler):
             images.append(cropped_image)
             topk_batch.append(topk)
 
-        return torch.stack(images).to(self.device), topk_batch, debug
+        return torch.stack(images).to(self.device), topk_batch
 
     def inference(self, batch):
         """
         The Inference Function receives the pre-processed input in form of Tensor
         Args:
-            batch (torch.tensor): list of images, topk_batch, debug
+            batch (torch.tensor): list of images, topk_batch
                 - images: torch.tensor of shape (batch_size, 3, image_size, image_size)
-                - topk_batch (List[int]): list of topk for each image in the batch
-                - debug: bool, whether to return debug information
+                - topk_batch (list[int]): list of topk for each image in the batch
         Returns:
             D (torch.tensor): distance matrix of shape (batch_size, topk)
             I (torch.tensor): index matrix of shape (batch_size, topk)
-            debug (bool): whether to return debug information
         """
-        img_tensor, topk_batch, debug = batch
+        img_tensor, topk_batch = batch
         logger.info(f"img_tensor.shape: {img_tensor.shape}")
         logger.info(f"topk_batch: {topk_batch}")
         logger.info(f"img_tensor.device: {img_tensor.device}")
@@ -218,7 +213,7 @@ class DeepHashingHandler(VisionHandler):
         # we will use features to compute the distance and sort them.
         # This is ensure that if the query exists in the database, it will be the top 1 result.
 
-        return D, I, debug
+        return D, I
     
     def postprocess(self, inference_output):
         """
@@ -229,29 +224,22 @@ class DeepHashingHandler(VisionHandler):
         Args:
             D (torch.tensor): distance matrix of shape (batch_size, topk)
             I (torch.tensor): index matrix of shape (batch_size, topk)
-            debug (bool): whether to return debug information
         
         Returns:
-            responses (List[Dict]): list of responses
+            responses (list[Dict]): list of responses
                 - index_database_version (str): version of the index database
-                - relevant (List[str]): list of relevant images, each image is a string of image path, sorted by relevance
-                - distances (List[int]): list of distances. Only returned if debug is True
+                - relevant (list[str]): list of relevant images, each image is a string of image path, sorted by relevance
+                - distances (list[int]): list of distances.
         """
-        D, I, debug = inference_output
+        D, I = inference_output
         logger.info(f"Postprocess: I: {I}")
         logger.info(f"Postprocess: D: {D}")
-        img_paths: List[List[int]] = [[self.remap_index_to_img_path_dict[str(idx)] for idx in idxs] for idxs in I]
-        if not debug:
-            responses = [{
-                "index_database_version": self.setup_config["index_database_version"],
-                "relevant": img_path
-            } for img_path in img_paths]
-        else:
-            responses = [{
-                "index_database_version": self.setup_config["index_database_version"],
-                "relevant": img_path,
-                "distances": dists.tolist()
-            } for img_path, dists in zip(img_paths, D)]
+        img_paths: list[list[int]] = [[self.remap_index_to_img_path_dict[str(idx)] for idx in idxs] for idxs in I]
+        responses = [{
+            "index_database_version": self.setup_config["index_database_version"],
+            "relevant": img_path,
+            "distances": dists.tolist()
+        } for img_path, dists in zip(img_paths, D)]
         logger.info(f"Postprocess: responses: {responses}")
         return responses
 
