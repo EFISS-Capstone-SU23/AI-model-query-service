@@ -15,7 +15,7 @@ import torch.cuda.amp as amp
 import cv2
 import albumentations as A
 from albumentations.pytorch import ToTensorV2
-
+from ultralytics import YOLO
 
 logger = logging.getLogger(__name__)
 
@@ -72,7 +72,10 @@ class DeepHashingHandler(VisionHandler):
             with open(os.path.join(model_dir, "remap_index_to_img_path_dict.json")) as f:
                 self.remap_index_to_img_path_dict = json.load(f)["remap_index_to_img_path_dict"]
         else:
-            raise Exception("Missing the remap_index_to_img_path_dict.json file.")
+           raise Exception("Missing the remap_index_to_img_path_dict.json file.")
+
+        self.yolo_model = YOLO(os.path.join(model_dir, "yolo.pt"))
+        self.yolo_model.to(self.device)
 
         image_size = self.setup_config["image_size"]
         self.image_processing = A.Compose([
@@ -84,9 +87,39 @@ class DeepHashingHandler(VisionHandler):
             ToTensorV2(),
         ])
     
-    def transform(self, image):
-        image = self.image_processing(image=image)['image'].float()
-        return image
+    def transform(self, image: np.ndarray) -> torch.Tensor:
+        return self.image_processing(image=image)['image'].float()
+    
+    def crop_image(self, img: np.ndarray) -> list[np.ndarray]:
+        """
+        Crop the image using YOLOv8
+        
+        Args:
+            img (np.ndarray): the image to crop
+        
+        Returns:
+            np.ndarray: the cropped images, if any
+        """
+        result = self.yolo_model.predict(
+            source=img,
+            conf=0.05,
+            device='0' if self.device.type == 'cuda' else 'cpu',
+            save=False,
+            verbose=False
+        )[0]
+        if len(result.boxes.xyxy) == 0:
+            logger.info("No object detected")
+            return []
+        
+        out: list[np.ndarray] = []
+        for box in result.boxes.xyxy:
+            x, y, _x, _y = list(box.int())
+            out.append(result.orig_img[y:_y, x:_x])
+
+            # NOTE: for now, we only return the first cropped image
+            return out
+        
+        return out
 
     def preprocess(self, data):
         """The preprocess function of MNIST program converts the input data to a float tensor
@@ -100,8 +133,8 @@ class DeepHashingHandler(VisionHandler):
         Returns:
             list : The preprocess function returns the input image as a list of float tensors.
         """
-        images = []
-        topk_batch: List[int] = []
+        images: list[torch.Tensor] = []
+        topk_batch: list[int] = []
         debug = False
 
         for row in data:
@@ -123,11 +156,20 @@ class DeepHashingHandler(VisionHandler):
             image: str = req.get("image")
             debug: bool = req.get("debug", False)  # NOTE: debug mode is set for all images in a batch
 
-            image = self.data_uri_to_cv2_img(image)
-            image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-            image = self.transform(image)
+            image: np.ndarray = self.data_uri_to_cv2_img(image)
+            _images: list[np.ndarray] = self.crop_image(image)
 
-            images.append(image)
+            if len(_images) == 0:
+                logger.info("Falling back to the original image")
+                _images.append(image)
+
+            # NOTE: for now, we only use the first cropped image
+            cropped_image = _images[0]
+
+            cropped_image: np.ndarray = cv2.cvtColor(cropped_image, cv2.COLOR_BGR2RGB)
+            cropped_image: torch.Tensor = self.transform(cropped_image)
+
+            images.append(cropped_image)
             topk_batch.append(topk)
 
         return torch.stack(images).to(self.device), topk_batch, debug
@@ -160,7 +202,7 @@ class DeepHashingHandler(VisionHandler):
             # all topk are the same, we can use batch search
             D, I = self.index.search(hashcodes, topk_batch[0])
         else:
-            I = []
+            I: list = []
             for i, topk in enumerate(topk_batch):
                 D, _I = self.index.search(hashcodes[i, :].reshape(1, -1), topk)
                 logger.info(f"Top {topk} similar images for image {i}: {_I}")
