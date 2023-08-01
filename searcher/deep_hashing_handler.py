@@ -245,7 +245,7 @@ class DeepHashingHandler(VisionHandler):
 
     
     @staticmethod
-    def merge_images_with_same_product_id(responses: list[dict[str, list | str]]) -> list[dict[str, list | str]]:
+    def merge_images_with_same_product_id(responses: list[dict[str, list]]) -> list[dict[str, list]]:
         """
         Merge images with the same product id, uses the first image of each product
 
@@ -255,11 +255,11 @@ class DeepHashingHandler(VisionHandler):
         Returns:
             responses (list[Dict]): list of responses
         """
-        out_responses = []
-        response: dict[str, list | str]
+        out_responses: list[dict[str, list]] = []
+        response: dict[str, list]
         for response in responses:
-            out_response = {
-                "index_database_version": response["index_database_version"],
+            out_response: dict[str, list] = {
+                "index_database_version": response["index_database_version"],  # type: ignore
                 "relevant": [],
                 "distances": []
             }
@@ -277,6 +277,8 @@ class DeepHashingHandler(VisionHandler):
             for img_path, dist in img_path_to_dist.items():
                 out_response["relevant"].append(img_path)
                 out_response["distances"].append(dist)
+            
+            out_responses.append(out_response)
 
         return out_responses
 
