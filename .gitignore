@@ -189,3 +189,4 @@ index
 wandb/
 runs/
 lib/
+*.onnx

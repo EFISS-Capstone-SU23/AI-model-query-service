@@ -31,7 +31,7 @@ def index():
                 data = res
                 relevant_images = data['relevant']
                 # print(f"Relevant images: {relevant_images}")
-                relevant_images = ['https://storage.googleapis.com/efiss/data/product_images' + relevant_image.split('output')[1] for relevant_image in relevant_images]
+                relevant_images = ['https://storage.googleapis.com/efiss/data/product_images' + relevant_image.split('product_images')[1] for relevant_image in relevant_images]
                 print(f"Relevant images: {relevant_images}")
                 distances = data['distances']
                 print(f"Distances: {distances}")

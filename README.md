@@ -76,11 +76,11 @@ It will gather images data, index them, dockerize them, push to GCR, and re-run 
 ```bash
 docker build -t efiss-ai:latest \
     -t efiss-ai:1.0.0-cpu \
-    -t asia-southeast1-docker.pkg.dev/even-acumen-386115/efiss/efiss-ai:latest \
-    -t asia-southeast1-docker.pkg.dev/even-acumen-386115/efiss/efiss-ai:1.0.0-cpu \
+    -t asia-southeast1-docker.pkg.dev/efiss-394203/efiss/efiss-ai:latest \
+    -t asia-southeast1-docker.pkg.dev/efiss-394203/efiss/efiss-ai:1.0.0-cpu \
     -f searcher/Dockerfile .
 
-docker push asia-southeast1-docker.pkg.dev/even-acumen-386115/efiss/efiss-ai:1.0.0-cpu
+docker push asia-southeast1-docker.pkg.dev/efiss-394203/efiss/efiss-ai:1.0.0-cpu
 ```
 
 2. Build GPU docker image
@@ -88,7 +88,7 @@ docker push asia-southeast1-docker.pkg.dev/even-acumen-386115/efiss/efiss-ai:1.0
 ```bash
 docker build -t efiss-ai:latest-cuda \
     -t efiss-ai:1.0.0-cuda \
-    -t asia-southeast1-docker.pkg.dev/even-acumen-386115/efiss/efiss-ai:latest-cuda \
-    -t asia-southeast1-docker.pkg.dev/even-acumen-386115/efiss/efiss-ai:1.0.0-cuda \
+    -t asia-southeast1-docker.pkg.dev/efiss-394203/efiss/efiss-ai:latest-cuda \
+    -t asia-southeast1-docker.pkg.dev/efiss-394203/efiss/efiss-ai:1.0.0-cuda \
     -f searcher/Dockerfile.cuda .
 ```
