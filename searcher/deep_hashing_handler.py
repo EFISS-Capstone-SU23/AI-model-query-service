@@ -195,7 +195,7 @@ class DeepHashingHandler(VisionHandler):
 
         if len(set(topk_batch)) == 1:
             # all topk are the same, we can use batch search
-            D, I = self.index.search(hashcodes, topk_batch[0])
+            D, I = self.index.search(hashcodes, topk_batch[0] * 2)
             # TODO: topk * 4 to ensure there are too few images after filtered by product
         else:
             I: list = []
