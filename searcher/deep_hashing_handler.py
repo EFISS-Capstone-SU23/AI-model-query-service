@@ -15,6 +15,8 @@ import cv2
 import albumentations as A
 from albumentations.pytorch import ToTensorV2
 from ultralytics import YOLO
+import onnx
+import onnxruntime
 
 logger = logging.getLogger(__name__)
 
@@ -31,6 +33,17 @@ class DeepHashingHandler(VisionHandler):
     def __init__(self):
         super(DeepHashingHandler, self).__init__()
         self.initialized = False
+    
+    @staticmethod
+    def to_numpy(tensor: torch.Tensor) -> np.ndarray:
+        return tensor.detach().cpu().numpy() if tensor.requires_grad else tensor.cpu().numpy()
+    
+    def model(self, x: torch.Tensor) -> np.ndarray:
+        """
+        Run the model for the given input
+        """
+        return self.ort_session.run(None, {self.ort_session.get_inputs()[0].name: self.to_numpy(x)})[0]
+
 
     def initialize(self, ctx):
         self.manifest = ctx.manifest
@@ -59,9 +72,10 @@ class DeepHashingHandler(VisionHandler):
             raise Exception("Missing the config.json file.")
 
         logger.info(f"Loading model from {model_pt_path}")
-        self.model = torch.jit.load(model_pt_path, map_location=self.device)
-        self.model.eval()
-        logger.info(f'Model loaded successfully from {model_pt_path}: {self.model}')
+        onnx_model = onnx.load(model_pt_path)
+        onnx.checker.check_model(onnx_model)
+        self.ort_session = onnxruntime.InferenceSession(model_pt_path)
+        logger.info(f'Model loaded successfully from {model_pt_path}: {self.ort_session}')
 
         # Load the index
         logger.info(f"Loading index ...")
@@ -179,18 +193,18 @@ class DeepHashingHandler(VisionHandler):
                 - images: torch.tensor of shape (batch_size, 3, image_size, image_size)
                 - topk_batch (list[int]): list of topk for each image in the batch
         Returns:
-            D (torch.tensor): distance matrix of shape (batch_size, topk)
-            I (torch.tensor): index matrix of shape (batch_size, topk)
+            D (np.ndarray): distance matrix of shape (batch_size, topk)
+            I (np.ndarray): index matrix of shape (batch_size, topk)
         """
         img_tensor, topk_batch = batch
         logger.info(f"img_tensor.shape: {img_tensor.shape}")
         logger.info(f"topk_batch: {topk_batch}")
         logger.info(f"img_tensor.device: {img_tensor.device}")
-        with torch.no_grad():
-            img_tensor = img_tensor.to(self.device)
-            features = self.model(img_tensor)
+        # with torch.no_grad():
+            # img_tensor = img_tensor.to(self.device)
+        features: np.ndarray = self.model(img_tensor)
         logging.info(f"Hashcodes shape: {features.shape}")
-        hashcodes = self.convert_int(features)
+        hashcodes: np.ndarray = self.convert_int(features)
         logging.info("Finish computing hashcodes")
 
         if len(set(topk_batch)) == 1:
@@ -220,8 +234,8 @@ class DeepHashingHandler(VisionHandler):
         easy for the user to understand.
         
         Args:
-            D (torch.tensor): distance matrix of shape (batch_size, topk)
-            I (torch.tensor): index matrix of shape (batch_size, topk)
+            D (np.ndarray): distance matrix of shape (batch_size, topk)
+            I (np.ndarray): index matrix of shape (batch_size, topk)
         
         Returns:
             responses (list[Dict]): list of responses
@@ -283,8 +297,5 @@ class DeepHashingHandler(VisionHandler):
         return out_responses
 
     @staticmethod
-    def convert_int(codes):
-        out = codes.sign().cpu().numpy().astype(int)
-        out[out == -1] = 0
-        out = np.packbits(out, axis=-1)
-        return out
+    def convert_int(codes: np.ndarray) -> np.ndarray:
+        return np.packbits(np.sign(codes) == 1, axis=-1)
