@@ -127,6 +127,7 @@ class DeepHashingHandler(VisionHandler):
             data (list): Input data from the request is in the form of a Tensor
                 - row: {
                     "topk": 10,
+                    "diversity": 1, (min 1, max 100)
                     "image": "base64 encoded image"
                 }
         Returns:
@@ -134,6 +135,7 @@ class DeepHashingHandler(VisionHandler):
         """
         images: list[torch.Tensor] = []
         topk_batch: list[int] = []
+        diversity_batch: list[int] = []
 
         for row in data:
             # Compat layer: normally the envelope should just return the data
@@ -168,8 +170,9 @@ class DeepHashingHandler(VisionHandler):
 
             images.append(cropped_image)
             topk_batch.append(topk)
+            diversity_batch.append(req.get("diversity", 1))
 
-        return torch.stack(images).to(self.device), topk_batch
+        return torch.stack(images).to(self.device), topk_batch, diversity_batch
 
     def inference(self, batch):
         """
@@ -178,11 +181,12 @@ class DeepHashingHandler(VisionHandler):
             batch (torch.tensor): list of images, topk_batch
                 - images: torch.tensor of shape (batch_size, 3, image_size, image_size)
                 - topk_batch (list[int]): list of topk for each image in the batch
+                - diversity_batch (list[int]): list of diversity for each image in the batch
         Returns:
             D (torch.tensor): distance matrix of shape (batch_size, topk)
             I (torch.tensor): index matrix of shape (batch_size, topk)
         """
-        img_tensor, topk_batch = batch
+        img_tensor, topk_batch, diversity_batch = batch
         logger.info(f"img_tensor.shape: {img_tensor.shape}")
         logger.info(f"topk_batch: {topk_batch}")
         logger.info(f"img_tensor.device: {img_tensor.device}")
@@ -193,18 +197,26 @@ class DeepHashingHandler(VisionHandler):
         hashcodes = self.convert_int(features)
         logging.info("Finish computing hashcodes")
 
-        if len(set(topk_batch)) == 1:
+        if len(set(topk_batch)) == 1 and all(diversity == 1 for diversity in diversity_batch):
             # all topk are the same, we can use batch search
+            I: torch.Tensor[int]
+            D: torch.Tensor[int]
             D, I = self.index.search(hashcodes, topk_batch[0] * 2)
             # TODO: topk * 4 to ensure there are too few images after filtered by product
         else:
-            I: list = []
+            I: list[torch.Tensor[int]] = []
+            D: list[torch.Tensor[int]] = []
             for i, topk in enumerate(topk_batch):
-                D, _I = self.index.search(hashcodes[i, :].reshape(1, -1), topk)
+                diversity = diversity_batch[i]
+                _D, _I = self.index.search(hashcodes[i, :].reshape(1, -1), topk * diversity * 2)
+                _I = _I[0]
+                _D = _D[0]
+                _D = _D[np.arange(0, _D.shape[0], diversity)]
                 logger.info(f"Top {topk} similar images for image {i}: {_I}")
-                logger.info(f"Top {topk} distances for image {i}: {D}")
+                logger.info(f"Top {topk} distances for image {i}: {_D}")
                 logger.info(f"I.shape: {_I.shape}")
-                I.append(_I[0])
+                I.append(_I)
+                D.append(_D)
         
         # TODO:
         # If there is any images that have the same distance as the top 1 result,
