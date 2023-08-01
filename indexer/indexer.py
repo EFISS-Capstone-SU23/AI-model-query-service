@@ -215,11 +215,9 @@ class Indexer:
 
     @staticmethod
     def convert_int(codes):
-        out = codes.sign().cpu().numpy().astype(int)
+        out = (codes.sign() == 1).cpu().numpy()
         del codes
-        out[out == -1] = 0
-        out = np.packbits(out, axis=-1)
-        return out
+        return np.packbits(out, axis=-1)
 
 def main(args):
     new_index_database_version = args.new_index_database_version
