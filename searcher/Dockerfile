@@ -20,23 +20,23 @@ RUN apt-get update && apt-get -y upgrade \
 COPY searcher/requirements.txt /install
 RUN pip install -r requirements.txt
 
-ARG VERSION=1.2.0
+ARG VERSION=3.0.0
 ARG MODEL_NAME=relahash-medium-64bits
-ARG YOLO_MODEL_PATH=torchscripts_models/yolo/yolo.pt
+ARG YOLO_MODEL_PATH=torchscripts_models/yolo/yolo
 
 RUN mkdir -p /app
 WORKDIR /app
 
 COPY searcher/config.properties searcher/deep_hashing_handler.py /app/
 COPY index/${VERSION} /app/index/${VERSION}
-COPY torchscripts_models/${MODEL_NAME}.pt /app/torchscripts_models/model-image-retrieval.pt
+COPY torchscripts_models/onnx/${MODEL_NAME}.onnx /app/torchscripts_models/model-image-retrieval.onnx
 COPY ${YOLO_MODEL_PATH}.pt /app/torchscripts_models/yolo.pt
   
 # create model archive file packaging model artifacts and dependencies
 RUN torch-model-archiver -f \
   --model-name=model-image-retrieval \
   --version=1.0 \
-  --serialized-file=/app/torchscripts_models/model-image-retrieval.pt \
+  --serialized-file=/app/torchscripts_models/model-image-retrieval.onnx \
   --handler=/app/deep_hashing_handler.py \
   --extra-files "/app/index/${VERSION}/config.json,/app/index/${VERSION}/remap_index_to_img_path_dict.json,/app/index/${VERSION}/index.bin,/app/torchscripts_models/yolo.pt"
 
