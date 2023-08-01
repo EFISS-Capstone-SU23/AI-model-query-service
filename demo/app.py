@@ -33,7 +33,7 @@ def index():
                 # print(f"Relevant images: {relevant_images}")
                 # relevant_images = [f'https://storage.googleapis.com/efiss/data/product_images/{relevant_image.split('/')[-1]}.jpg' for relevant_image in relevant_images]
                 for i in range(len(relevant_images)):
-                    sitename = "shopee-" + relevant_images[i].split("shopee_")[1]
+                    sitename = "shopee-" + relevant_images[i].split("shopee_")[1].replace("_vn", ".vn")
                     relevant_images[i] = f'https://storage.googleapis.com/efiss/data/product_images/{sitename}/{relevant_images[i].split("/")[-1]}.jpeg'
                 print(f"Relevant images: {relevant_images}")
                 distances = data['distances']
