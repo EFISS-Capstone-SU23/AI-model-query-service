@@ -38,12 +38,6 @@ class DeepHashingHandler(VisionHandler):
     def to_numpy(tensor: torch.Tensor) -> np.ndarray:
         return tensor.detach().cpu().numpy() if tensor.requires_grad else tensor.cpu().numpy()
     
-    def model(self, x: torch.Tensor) -> np.ndarray:
-        """
-        Run the model for the given input
-        """
-        return self.ort_session.run(None, {self.ort_session.get_inputs()[0].name: self.to_numpy(x)})[0]
-
 
     def initialize(self, ctx):
         self.manifest = ctx.manifest
@@ -134,6 +128,13 @@ class DeepHashingHandler(VisionHandler):
         
         return out
 
+    def model_inference(self, x: torch.Tensor) -> np.ndarray:
+        """
+        Run the model for the given input
+        """
+        return self.ort_session.run(None, {self.ort_session.get_inputs()[0].name: self.to_numpy(x)})[0]
+
+
     def preprocess(self, data):
         """The preprocess function of MNIST program converts the input data to a float tensor
 
@@ -202,7 +203,7 @@ class DeepHashingHandler(VisionHandler):
         logger.info(f"img_tensor.device: {img_tensor.device}")
         # with torch.no_grad():
             # img_tensor = img_tensor.to(self.device)
-        features: np.ndarray = self.model(img_tensor)
+        features: np.ndarray = self.model_inference(img_tensor)
         logging.info(f"Hashcodes shape: {features.shape}")
         hashcodes: np.ndarray = self.convert_int(features)
         logging.info("Finish computing hashcodes")
