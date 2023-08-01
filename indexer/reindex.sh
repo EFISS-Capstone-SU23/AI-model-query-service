@@ -21,7 +21,7 @@ if [ -z "$VERSION" ]; then
     exit 1
 fi
 
-bash indexer/extract_datalake.sh /media/saplab/MinhNVMe/relahash/data/shopee_29-7/product_images
+# bash indexer/extract_datalake.sh /media/saplab/MinhNVMe/relahash/data/shopee_29-7/product_images
 
 set -x
 
