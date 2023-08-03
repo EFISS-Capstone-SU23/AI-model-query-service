@@ -141,7 +141,7 @@ class DeepHashingHandler(VisionHandler):
         Returns:
             list : The preprocess function returns the input image as a list of float tensors.
         """
-        images: list[torch.Tensor] = []
+        images: list[np.ndarray] = []
         topk_batch: list[int] = []
 
         for row in data:
@@ -173,7 +173,7 @@ class DeepHashingHandler(VisionHandler):
             cropped_image = _images[0]
 
             cropped_image: np.ndarray = cv2.cvtColor(cropped_image, cv2.COLOR_BGR2RGB)
-            cropped_image: torch.Tensor = self.transform(cropped_image)
+            # cropped_image: torch.Tensor = self.transform(cropped_image)
 
             images.append(cropped_image)
             topk_batch.append(topk)
