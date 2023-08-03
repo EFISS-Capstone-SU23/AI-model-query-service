@@ -26,7 +26,7 @@ df
 from datasets import Dataset
 dataset = Dataset.from_pandas(df)
 
-chunk_size = 100000
+chunk_size = 40000
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 model.eval()
