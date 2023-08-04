@@ -12,3 +12,4 @@ albumentations
 opencv-python
 protobuf==3.20.*
 ultralytics
+transformers[torch]

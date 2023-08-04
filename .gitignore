@@ -190,3 +190,6 @@ wandb/
 runs/
 lib/
 *.onnx
+*.arrow
+*.jpg
+*.jpeg

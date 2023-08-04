@@ -35,13 +35,14 @@ fi
 
 set -x
 
-/home/saplab/anaconda3/envs/thaiminhpv/bin/python indexer/indexer.py \
-    --database database_info.txt \
-    --model_path torchscripts_models/$MODEL_NAME.pt \
-    --device cuda:0 \
-    --batch_size 64 \
-    --num_workers 16 \
-    --new_index_database_version $VERSION
+# /home/saplab/anaconda3/envs/thaiminhpv/bin/python indexer/indexer.py \
+#     --database database_info.txt \
+#     --model_path torchscripts_models/$MODEL_NAME.pt \
+#     --device cuda:0 \
+#     --batch_size 64 \
+#     --num_workers 16 \
+#     --image_size 224 \
+#     --new_index_database_version $VERSION
 
 docker build -t ai:latest \
     -t ai:$VERSION-cpu \

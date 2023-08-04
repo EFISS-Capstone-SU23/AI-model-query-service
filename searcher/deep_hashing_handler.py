@@ -2,19 +2,15 @@ import torch
 import base64
 import numpy as np
 import faiss
-from PIL import Image
 from ts.torch_handler.vision_handler import VisionHandler
-import io
 import zipfile
 import os
 import json
 import logging
-from torchvision import transforms
-import torch.cuda.amp as amp
 import cv2
-import albumentations as A
-from albumentations.pytorch import ToTensorV2
 from ultralytics import YOLO
+from transformers import ViTImageProcessor, ViTForImageClassification
+import torch.nn as nn
 
 logger = logging.getLogger(__name__)
 
@@ -36,8 +32,9 @@ class DeepHashingHandler(VisionHandler):
         self.manifest = ctx.manifest
         properties = ctx.system_properties
         model_dir = properties.get("model_dir")
-        serialized_file = self.manifest["model"]["serializedFile"]
-        model_pt_path = os.path.join(model_dir, serialized_file)
+        # serialized_file = self.manifest["model"]["serializedFile"]
+        # model_pt_path = os.path.join(model_dir, serialized_file)
+        model_pt_path = None
 
         self.device = torch.device(
             "cuda:" + str(properties.get("gpu_id"))
@@ -59,13 +56,21 @@ class DeepHashingHandler(VisionHandler):
             raise Exception("Missing the config.json file.")
 
         logger.info(f"Loading model from {model_pt_path}")
-        self.model = torch.jit.load(model_pt_path, map_location=self.device)
-        self.model.eval()
+
+        processor = ViTImageProcessor.from_pretrained('google/vit-base-patch16-224')
+        model = ViTForImageClassification.from_pretrained('google/vit-base-patch16-224')
+        model.classifier = nn.Identity()
+        model.eval()
+        model.to(self.device)
+
+        self.model = model
+        self.processor = processor
+
         logger.info(f'Model loaded successfully from {model_pt_path}: {self.model}')
 
         # Load the index
         logger.info(f"Loading index ...")
-        self.index = faiss.read_index_binary(os.path.join(model_dir, "index.bin"))
+        self.index = faiss.read_index(os.path.join(model_dir, "index.bin"))
 
         if os.path.isfile(os.path.join(model_dir, "remap_index_to_img_path_dict.json")):
             with open(os.path.join(model_dir, "remap_index_to_img_path_dict.json")) as f:
@@ -76,16 +81,6 @@ class DeepHashingHandler(VisionHandler):
         self.yolo_model = YOLO(os.path.join(model_dir, "yolo.pt"))
         self.yolo_model.to(self.device)
 
-        image_size = self.setup_config["image_size"]
-        self.image_processing = A.Compose([
-            A.Resize(image_size, image_size),
-            A.Normalize(
-                mean=[0.485, 0.456, 0.406],
-                std=[0.229, 0.224, 0.225],
-            ),
-            ToTensorV2(),
-        ])
-    
     def transform(self, image: np.ndarray) -> torch.Tensor:
         return self.image_processing(image=image)['image'].float()
     
@@ -101,7 +96,7 @@ class DeepHashingHandler(VisionHandler):
         """
         result = self.yolo_model.predict(
             source=img,
-            conf=0.05,
+            conf=0.2,
             device='0' if self.device.type == 'cuda' else 'cpu',
             save=False,
             verbose=False
@@ -119,6 +114,20 @@ class DeepHashingHandler(VisionHandler):
             return out
         
         return out
+    
+    def tokenize(self, img: np.ndarray) -> dict[str, torch.Tensor]:
+        """
+        Tokenize the image using ViT
+    
+        Args:
+            img (np.ndarray): the image to tokenize, which has been ran through cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+    
+        Returns:
+            dict[str, torch.Tensor]: the tokenized image
+        """
+        inputs = self.processor(images=img, return_tensors="pt")
+        inputs['pixel_values'] = inputs['pixel_values'].squeeze()
+        return inputs
 
     def preprocess(self, data):
         """The preprocess function of MNIST program converts the input data to a float tensor
@@ -132,7 +141,7 @@ class DeepHashingHandler(VisionHandler):
         Returns:
             list : The preprocess function returns the input image as a list of float tensors.
         """
-        images: list[torch.Tensor] = []
+        images: list[np.ndarray] = []
         topk_batch: list[int] = []
 
         for row in data:
@@ -164,12 +173,14 @@ class DeepHashingHandler(VisionHandler):
             cropped_image = _images[0]
 
             cropped_image: np.ndarray = cv2.cvtColor(cropped_image, cv2.COLOR_BGR2RGB)
-            cropped_image: torch.Tensor = self.transform(cropped_image)
+            # cropped_image: torch.Tensor = self.transform(cropped_image)
 
             images.append(cropped_image)
             topk_batch.append(topk)
 
-        return torch.stack(images).to(self.device), topk_batch
+        assert len(images) == 1, "Currently, we only support one image at a time, edit config.properties to change this behavior"
+        
+        return images, topk_batch
 
     def inference(self, batch):
         """
@@ -183,24 +194,28 @@ class DeepHashingHandler(VisionHandler):
             I (torch.tensor): index matrix of shape (batch_size, topk)
         """
         img_tensor, topk_batch = batch
+        img_tensor: np.ndarray = img_tensor[0]
+        topk: int = topk_batch[0]
         logger.info(f"img_tensor.shape: {img_tensor.shape}")
         logger.info(f"topk_batch: {topk_batch}")
-        logger.info(f"img_tensor.device: {img_tensor.device}")
+
+        inputs = self.processor(images=img_tensor, return_tensors="pt")
+        inputs['pixel_values'] = inputs['pixel_values'].to(self.device)
+
         with torch.no_grad():
-            img_tensor = img_tensor.to(self.device)
-            features = self.model(img_tensor)
-        logging.info(f"Hashcodes shape: {features.shape}")
-        hashcodes = self.convert_int(features)
-        logging.info("Finish computing hashcodes")
+            features = self.model(**inputs).logits
+        logging.info(f"Features shape: {features.shape}")  # (1, 768)
+        logging.info("Finish computing features")
 
         if len(set(topk_batch)) == 1:
             # all topk are the same, we can use batch search
-            D, I = self.index.search(hashcodes, topk_batch[0] * 2)
+            D, I = self.index.search(features, topk_batch[0] * 2)
             # TODO: topk * 4 to ensure there are too few images after filtered by product
         else:
+            raise NotImplementedError("Currently, we only support the case where all topk are the same")
             I: list = []
             for i, topk in enumerate(topk_batch):
-                D, _I = self.index.search(hashcodes[i, :].reshape(1, -1), topk)
+                D, _I = self.index.search(features[i, :].reshape(1, -1), topk)
                 logger.info(f"Top {topk} similar images for image {i}: {_I}")
                 logger.info(f"Top {topk} distances for image {i}: {D}")
                 logger.info(f"I.shape: {_I.shape}")
