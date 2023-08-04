@@ -86,8 +86,8 @@ class Indexer:
         logging.info("Begin computing hashcodes")
         logging.info(f"Loading Model from path: {model_path}")
         # load model
-        model = torch.jit.load(model_path, map_location=self.configs["device"])
-        model.eval()
+        # model = torch.jit.load(model_path, map_location=self.configs["device"])
+        # model.eval()
 
         # create data
         dataset = DeepHashingDataset(database, transform=A.Compose([
@@ -108,29 +108,29 @@ class Indexer:
             collate_fn=dataset.collate_fn,
         )
 
-        logging.info("Compute hashcodes...")
-        # compute hashcodes
-        hashcodes = []
-        with torch.no_grad():
-            pbar = tqdm(
-                dataloader,
-                desc="Compute hashcodes",
-                total=len(dataloader),
-                ascii=True,
-                ncols=100,
-                disable=False
-            )
-            for batch in pbar:
-                batch = batch.to(self.configs["device"])
-                hashcode = model(batch)
-                hashcodes.append(hashcode.cpu())
-        hashcodes = torch.cat(hashcodes, dim=0)
-        self.configs["hashcode_length"] = hashcodes.shape[1]
-        logging.info(f"Hashcodes shape: {hashcodes.shape}")
-        del model, dataset, dataloader
-        hashcodes = self.convert_int(hashcodes)
-        logging.info("Finish computing hashcodes")
-        return hashcodes
+        # logging.info("Compute hashcodes...")
+        # # compute hashcodes
+        # hashcodes = []
+        # with torch.no_grad():
+        #     pbar = tqdm(
+        #         dataloader,
+        #         desc="Compute hashcodes",
+        #         total=len(dataloader),
+        #         ascii=True,
+        #         ncols=100,
+        #         disable=False
+        #     )
+        #     for batch in pbar:
+        #         batch = batch.to(self.configs["device"])
+        #         hashcode = model(batch)
+        #         hashcodes.append(hashcode.cpu())
+        # hashcodes = torch.cat(hashcodes, dim=0)
+        # self.configs["hashcode_length"] = hashcodes.shape[1]
+        # logging.info(f"Hashcodes shape: {hashcodes.shape}")
+        # del model, dataset, dataloader
+        # hashcodes = self.convert_int(hashcodes)
+        # logging.info("Finish computing hashcodes")
+        # return hashcodes
 
     def dump_index(
         self,
@@ -156,26 +156,26 @@ class Indexer:
         remap_index_to_img_path_dict = self.create_bi_directional_dictionary(database)
         logging.info("Done!")
         logging.info("Dump index...")
-        if index_mode == "default":
-            logging.info("Use faiss.IndexBinaryFlat")
-            # create index
-            index = faiss.IndexBinaryFlat(self.configs["hashcode_length"])
-            index.add(hashcodes)
-        elif index_mode == "ivf":
-            logging.info("Use faiss.IndexBinaryIVF")
-            # create index
-            quantizer = faiss.IndexBinaryFlat(self.configs["hashcode_length"])
-            index = faiss.IndexBinaryIVF(quantizer, self.configs["hashcode_length"], 100)
-            index.train(hashcodes)
-            index.add(hashcodes)
-        else:
-            raise ValueError(f"index_mode {index_mode} is not supported")
+        # if index_mode == "default":
+        #     logging.info("Use faiss.IndexBinaryFlat")
+        #     # create index
+        #     index = faiss.IndexBinaryFlat(self.configs["hashcode_length"])
+        #     index.add(hashcodes)
+        # elif index_mode == "ivf":
+        #     logging.info("Use faiss.IndexBinaryIVF")
+        #     # create index
+        #     quantizer = faiss.IndexBinaryFlat(self.configs["hashcode_length"])
+        #     index = faiss.IndexBinaryIVF(quantizer, self.configs["hashcode_length"], 100)
+        #     index.train(hashcodes)
+        #     index.add(hashcodes)
+        # else:
+        #     raise ValueError(f"index_mode {index_mode} is not supported")
 
         logging.info("Done adding index")
         # dump index
         index_path = os.path.join(dump_index_path, new_index_database_version)
         os.makedirs(index_path, exist_ok=True)
-        faiss.write_index_binary(index, os.path.join(index_path, "index.bin"))
+        # faiss.write_index_binary(index, os.path.join(index_path, "index.bin"))
 
         # update configs
         self.configs["index_database_version"] = new_index_database_version
