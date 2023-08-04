@@ -194,11 +194,10 @@ class DeepHashingHandler(VisionHandler):
             I (torch.tensor): index matrix of shape (batch_size, topk)
         """
         img_tensor, topk_batch = batch
-        logger.info(f"img_tensor.shape: {img_tensor.shape}")
-        logger.info(f"topk_batch: {topk_batch}")
-        logger.info(f"img_tensor.device: {img_tensor.device}")
         img_tensor: np.ndarray = img_tensor[0]
         topk: int = topk_batch[0]
+        logger.info(f"img_tensor.shape: {img_tensor.shape}")
+        logger.info(f"topk_batch: {topk_batch}")
 
         inputs = self.processor(images=img_tensor, return_tensors="pt")
         inputs['pixel_values'] = inputs['pixel_values'].to(self.device)

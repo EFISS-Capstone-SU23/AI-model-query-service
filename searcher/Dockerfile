@@ -27,10 +27,10 @@ ARG YOLO_MODEL_PATH=torchscripts_models/yolo/yolo.pt
 RUN mkdir -p /app
 WORKDIR /app
 
-COPY searcher/config.properties searcher/deep_hashing_handler.py /app/
 COPY index/${VERSION} /app/index/${VERSION}
 # COPY torchscripts_models/${MODEL_NAME}.pt /app/torchscripts_models/model-image-retrieval.pt
 COPY ${YOLO_MODEL_PATH}.pt /app/torchscripts_models/yolo.pt
+COPY searcher/config.properties searcher/deep_hashing_handler.py /app/
   
 # create model archive file packaging model artifacts and dependencies
 RUN torch-model-archiver -f \
