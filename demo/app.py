@@ -6,7 +6,7 @@ from flask import Flask, request, render_template, redirect, url_for
 app = Flask(__name__)
 
 # API_URL = "http://10.66.66.2:5000/predictions/image-retrieval-v1.0"
-API_URL = "https://efiss.tech/ai/predictions/image-retrieval-v1.0"
+API_URL = "https://dev.efiss.tech/ai/predictions/image-retrieval-v1.0"
 # API_URL = "http://localhost:5000/predictions/image-retrieval-v1.0"
 
 @app.route('/', methods=['GET', 'POST'])
@@ -33,6 +33,7 @@ def index():
                 # print(f"Relevant images: {relevant_images}")
                 # relevant_images = [f'https://storage.googleapis.com/efiss/data/product_images/{relevant_image.split('/')[-1]}.jpg' for relevant_image in relevant_images]
                 for i in range(len(relevant_images)):
+                    # sitename = "shopee-" + relevant_images[i].split("shopee_")[1].replace("_vn", ".vn").replace("_", ".")
                     sitename = "shopee-" + relevant_images[i].split("shopee_")[1].replace("_vn", ".vn")
                     relevant_images[i] = f'https://storage.googleapis.com/efiss/data/product_images/{sitename}/{relevant_images[i].split("/")[-1]}.jpeg'
                 print(f"Relevant images: {relevant_images}")
