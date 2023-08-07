@@ -97,16 +97,13 @@ class DeepHashingHandler(VisionHandler):
             },
             limit=topk,
             output_fields=['path'],
-            # consistency_level="Strong"
+            consistency_level="Strong"
         )
         logger.info(f"result: {result}")
 
         return [list(row.ids) for row in result], [list(row.distances) for row in result]
 
 
-    def transform(self, image: np.ndarray) -> torch.Tensor:
-        return self.image_processing(image=image)['image'].float()
-    
     def crop_image(self, img: np.ndarray) -> list[np.ndarray]:
         """
         Crop the image using YOLOv8
@@ -193,17 +190,16 @@ class DeepHashingHandler(VisionHandler):
                 _images.append(image)
 
             # NOTE: for now, we only use the first cropped image
-            cropped_image = _images[0]
+            _cropped_image = _images[0]
 
-            cropped_image: np.ndarray = cv2.cvtColor(cropped_image, cv2.COLOR_BGR2RGB)
-            # cropped_image: torch.Tensor = self.transform(cropped_image)
+            cropped_image: np.ndarray = cv2.cvtColor(_cropped_image, cv2.COLOR_BGR2RGB)
 
             images.append(cropped_image)
             topk_batch.append(topk)
 
         assert len(images) == 1, "Currently, we only support one image at a time, edit config.properties to change this behavior"
         
-        return images, topk_batch
+        return images, _cropped_image, topk_batch
 
     def inference(self, batch):
         """
@@ -211,12 +207,13 @@ class DeepHashingHandler(VisionHandler):
         Args:
             batch (torch.tensor): list of images, topk_batch
                 - images: torch.tensor of shape (batch_size, 3, image_size, image_size)
+                - cropped_image: np.ndarray of shape (3, image_size, image_size)
                 - topk_batch (list[int]): list of topk for each image in the batch
         Returns:
             D (torch.tensor): distance matrix of shape (batch_size, topk)
             I (torch.tensor): index matrix of shape (batch_size, topk)
         """
-        img_tensor, topk_batch = batch
+        img_tensor, cropped_image, topk_batch = batch
         img_tensor: np.ndarray = img_tensor[0]
         topk: int = topk_batch[0]
         logger.info(f"img_tensor.shape: {img_tensor.shape}")
@@ -232,31 +229,39 @@ class DeepHashingHandler(VisionHandler):
 
         if len(set(topk_batch)) == 1:
             # all topk are the same, we can use batch search
-            images_paths, distances = self.search(features.cpu().numpy(), topk_batch[0] * 2)
+            images_paths, distances = self.search(features.cpu().numpy(), topk * 2)
             # TODO: topk * 4 to ensure there are too few images after filtered by product
         else:
             raise NotImplementedError("Currently, we only support the case where all topk are the same")
 
-        return images_paths, distances
+        return images_paths, distances, cropped_image
     
     def postprocess(self, inference_output):
         """
         The post-process function receives the return value of the inference function.
         It performs post-processing on the raw output to convert it into a format that is
         easy for the user to understand.
+
+        Args:
+            inference_output (torch.tensor): list of images, topk_batch
+                - images_paths (list[list[str]]): list of list of image paths
+                - distances (list[list[float]]): list of list of distances
+                - cropped_image (np.ndarray): the cropped image
         
         Returns:
             responses (list[Dict]): list of responses
                 - relevant (list[str]): list of relevant images, each image is a string of image path, sorted by relevance
                 - distances (list[int]): list of distances.
+                - cropped_image (str): base64 encoded image
         """
-        images_paths, distances = inference_output
+        images_paths, distances, cropped_image = inference_output
         logger.info(f"Postprocess images_paths: {images_paths}")
         logger.info(f"Postprocess distances: {distances}")
         responses: list[dict] = [{
             "relevant": img_path,
-            "distances": dists
-        } for img_path, dists in zip(images_paths, distances)]
+            "distances": dists,
+            "cropped_image": _cropped_image
+        } for img_path, dists, _cropped_image in zip(images_paths, distances, [cropped_image])]
         logger.info(f"Postprocess: responses: {responses}")
         responses: list[dict] = self.merge_images_with_same_product_id(responses)
         logger.info(f"Responses after merged: {responses}")
@@ -279,7 +284,8 @@ class DeepHashingHandler(VisionHandler):
         for response in responses:
             out_response: dict[str, list] = {
                 "relevant": [],
-                "distances": []
+                "distances": [],
+                "cropped_image": base64.b64encode(cv2.imencode('.jpg', response["cropped_image"])[1]).decode('utf-8')
             }
             img_path_to_dist: dict[str, int] = {}
             for img_path, dist in zip(response["relevant"], response["distances"]):
