@@ -11,6 +11,7 @@ import cv2
 from ultralytics import YOLO
 from transformers import ViTImageProcessor, ViTForImageClassification
 import torch.nn as nn
+from pymilvus import connections, FieldSchema, CollectionSchema, DataType, Collection, utility
 
 logger = logging.getLogger(__name__)
 
@@ -70,16 +71,50 @@ class DeepHashingHandler(VisionHandler):
 
         # Load the index
         logger.info(f"Loading index ...")
-        self.index = faiss.read_index(os.path.join(model_dir, "index.bin"))
-
-        if os.path.isfile(os.path.join(model_dir, "remap_index_to_img_path_dict.json")):
-            with open(os.path.join(model_dir, "remap_index_to_img_path_dict.json")) as f:
-                self.remap_index_to_img_path_dict = json.load(f)["remap_index_to_img_path_dict"]
-        else:
-           raise Exception("Missing the remap_index_to_img_path_dict.json file.")
 
         self.yolo_model = YOLO(os.path.join(model_dir, "yolo.pt"))
         self.yolo_model.to(self.device)
+
+        self.collection = Collection('efiss_image_search')
+        self.collection.load()
+
+        self.search_param = {
+            "metric_type": "L2",
+            "ignore_growing": False,
+            # "params": {"nprobe": 16}
+        }
+
+    def search(self, query_embedding: np.ndarray, topk: int) -> tuple[list[list[str]], list[list[float]]]:
+        """
+        Search the index for the topk most similar images from Milvus database
+
+        Args:
+            query_embedding (np.ndarray): the query embedding, batched (1, 768)
+            topk (int): the number of results to return
+            
+        Returns:
+            list[list[str]]: the list of image paths
+            list[list[float]]: the list of distances
+        """
+        result = self.collection.search(
+            data=query_embedding,
+            anns_field="embedding",
+            # expr=None,
+            param={
+                "metric_type": "L2", 
+                # "offset": 5, 
+                # "ignore_growing": False, 
+                "params": {}
+                # "params": {"nprobe": 10}
+            },
+            limit=topk,
+            output_fields=['path'],
+            # consistency_level="Strong"
+        )
+        logger.info(f"result: {result}")
+
+        return [list(row.ids) for row in result], [list(row.distances) for row in result]
+
 
     def transform(self, image: np.ndarray) -> torch.Tensor:
         return self.image_processing(image=image)['image'].float()
@@ -203,30 +238,18 @@ class DeepHashingHandler(VisionHandler):
         inputs['pixel_values'] = inputs['pixel_values'].to(self.device)
 
         with torch.no_grad():
-            features = self.model(**inputs).logits
+            features: torch.Tensor = self.model(**inputs).logits
         logging.info(f"Features shape: {features.shape}")  # (1, 768)
         logging.info("Finish computing features")
 
         if len(set(topk_batch)) == 1:
             # all topk are the same, we can use batch search
-            D, I = self.index.search(features, topk_batch[0] * 2)
+            images_paths, distances = self.search(features.cpu().numpy(), topk_batch[0] * 2)
             # TODO: topk * 4 to ensure there are too few images after filtered by product
         else:
             raise NotImplementedError("Currently, we only support the case where all topk are the same")
-            I: list = []
-            for i, topk in enumerate(topk_batch):
-                D, _I = self.index.search(features[i, :].reshape(1, -1), topk)
-                logger.info(f"Top {topk} similar images for image {i}: {_I}")
-                logger.info(f"Top {topk} distances for image {i}: {D}")
-                logger.info(f"I.shape: {_I.shape}")
-                I.append(_I[0])
-        
-        # TODO:
-        # If there is any images that have the same distance as the top 1 result,
-        # we will use features to compute the distance and sort them.
-        # This is ensure that if the query exists in the database, it will be the top 1 result.
 
-        return D, I
+        return images_paths, distances
     
     def postprocess(self, inference_output):
         """
@@ -234,25 +257,20 @@ class DeepHashingHandler(VisionHandler):
         It performs post-processing on the raw output to convert it into a format that is
         easy for the user to understand.
         
-        Args:
-            D (torch.tensor): distance matrix of shape (batch_size, topk)
-            I (torch.tensor): index matrix of shape (batch_size, topk)
-        
         Returns:
             responses (list[Dict]): list of responses
                 - index_database_version (str): version of the index database
                 - relevant (list[str]): list of relevant images, each image is a string of image path, sorted by relevance
                 - distances (list[int]): list of distances.
         """
-        D, I = inference_output
-        logger.info(f"Postprocess: I: {I}")
-        logger.info(f"Postprocess: D: {D}")
-        img_paths: list[list[int]] = [[self.remap_index_to_img_path_dict[str(idx)] for idx in idxs] for idxs in I]
+        images_paths, distances = inference_output
+        logger.info(f"Postprocess images_paths: {images_paths}")
+        logger.info(f"Postprocess distances: {distances}")
         responses: list[dict] = [{
             "index_database_version": self.setup_config["index_database_version"],
             "relevant": img_path,
-            "distances": dists.tolist()
-        } for img_path, dists in zip(img_paths, D)]
+            "distances": dists
+        } for img_path, dists in zip(images_paths, distances)]
         logger.info(f"Postprocess: responses: {responses}")
         responses: list[dict] = self.merge_images_with_same_product_id(responses)
         logger.info(f"Responses after merged: {responses}")
