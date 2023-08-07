@@ -27,7 +27,7 @@ ARG YOLO_MODEL_PATH=torchscripts_models/yolo/yolo.pt
 RUN mkdir -p /app
 WORKDIR /app
 
-COPY index/${VERSION} /app/index/${VERSION}
+# COPY index/${VERSION} /app/index/${VERSION}
 # COPY torchscripts_models/${MODEL_NAME}.pt /app/torchscripts_models/model-image-retrieval.pt
 COPY ${YOLO_MODEL_PATH}.pt /app/torchscripts_models/yolo.pt
 COPY searcher/config.properties searcher/deep_hashing_handler.py /app/
@@ -37,7 +37,8 @@ RUN torch-model-archiver -f \
   --model-name=model-image-retrieval \
   --version=1.0 \
   --handler=/app/deep_hashing_handler.py \
-  --extra-files "/app/index/${VERSION}/config.json,/app/index/${VERSION}/remap_index_to_img_path_dict.json,/app/index/${VERSION}/index.bin,/app/torchscripts_models/yolo.pt"
+  --extra-files "/app/torchscripts_models/yolo.pt"
+#   --extra-files "/app/index/${VERSION}/config.json,/app/index/${VERSION}/remap_index_to_img_path_dict.json,/app/index/${VERSION}/index.bin,/app/torchscripts_models/yolo.pt"
 #   --serialized-file=/app/torchscripts_models/model-image-retrieval.pt \
 
 RUN mkdir -p /app/model_store && \
