@@ -1,7 +1,6 @@
 import torch
 import base64
 import numpy as np
-import faiss
 from ts.torch_handler.vision_handler import VisionHandler
 import zipfile
 import os
@@ -11,7 +10,7 @@ import cv2
 from ultralytics import YOLO
 from transformers import ViTImageProcessor, ViTForImageClassification
 import torch.nn as nn
-from pymilvus import connections, FieldSchema, CollectionSchema, DataType, Collection, utility
+from pymilvus import connections, Collection
 
 logger = logging.getLogger(__name__)
 
@@ -75,8 +74,16 @@ class DeepHashingHandler(VisionHandler):
         self.yolo_model = YOLO(os.path.join(model_dir, "yolo.pt"))
         self.yolo_model.to(self.device)
 
+
+        host = os.environ.get("MILVUS_HOST", "localhost")
+        port = os.environ.get("MILVUS_PORT", "19530")
+        logger.info(f"Connecting to Milvus: {host}:{port}")
+        connections.connect(host=host, port=port)
+        logger.info(f"Connected to Milvus: {host}:{port}")
         self.collection = Collection('efiss_image_search')
+        logger.info(f"Loading collection: {self.collection.name}")
         self.collection.load()
+        logger.info(f"Loaded collection to memory: {self.collection.name}")
 
         self.search_param = {
             "metric_type": "L2",
