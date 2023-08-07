@@ -42,6 +42,7 @@ class DeepHashingHandler(VisionHandler):
         logger.info(f"Loading model from {model_path}")
         processor = ViTImageProcessor.from_pretrained(model_path)
         model = ViTForImageClassification.from_pretrained(model_path)
+        model.classifier = nn.Identity()
         model.eval()
         model.to(self.device)
         self.model = model
