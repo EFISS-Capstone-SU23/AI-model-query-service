@@ -21,11 +21,6 @@ if [ -z "$VERSION" ]; then
     exit 1
 fi
 
-if [ -z "$MODEL_NAME" ]; then
-    echo "Please provide a model name"
-    exit 1
-fi
-
 if [ -z "$YOLO_MODEL_PATH" ]; then
     echo "Please provide a yolo model path"
     exit 1
@@ -48,7 +43,6 @@ docker build -t ai:latest \
     -t ai:$VERSION-cpu \
     -t asia-southeast1-docker.pkg.dev/efiss-394203/efiss/ai:latest \
     -t asia-southeast1-docker.pkg.dev/efiss-394203/efiss/ai:$VERSION-cpu \
-    --build-arg MODEL_NAME=$MODEL_NAME \
     --build-arg VERSION=$VERSION \
     --build-arg YOLO_MODEL_PATH=$YOLO_MODEL_PATH \
     -f searcher/Dockerfile .

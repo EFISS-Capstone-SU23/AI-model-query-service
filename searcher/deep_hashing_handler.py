@@ -1,7 +1,6 @@
 import torch
 import base64
 import numpy as np
-import faiss
 from ts.torch_handler.vision_handler import VisionHandler
 import zipfile
 import os
@@ -11,6 +10,7 @@ import cv2
 from ultralytics import YOLO
 from transformers import ViTImageProcessor, ViTForImageClassification
 import torch.nn as nn
+from pymilvus import connections, Collection
 
 logger = logging.getLogger(__name__)
 
@@ -32,58 +32,78 @@ class DeepHashingHandler(VisionHandler):
         self.manifest = ctx.manifest
         properties = ctx.system_properties
         model_dir = properties.get("model_dir")
-        # serialized_file = self.manifest["model"]["serializedFile"]
-        # model_pt_path = os.path.join(model_dir, serialized_file)
-        model_pt_path = None
+        serialized_file = self.manifest["model"]["serializedFile"]
+        yolo_model_path = os.path.join(model_dir, serialized_file)
+        model_path = model_dir
 
-        self.device = torch.device(
-            "cuda:" + str(properties.get("gpu_id"))
-            if torch.cuda.is_available() and properties.get("gpu_id") is not None
-            else "cpu"
-        )
+        self.device = torch.device( "cuda:" + str(properties.get("gpu_id")) if torch.cuda.is_available() and properties.get("gpu_id") is not None else "cpu")
         logging.info(f"Using device: {self.device}")
 
-        if os.path.isfile(os.path.join(model_dir, "module.zip")):
-            with zipfile.ZipFile(model_dir + "/module.zip", "r") as zip_ref:
-                zip_ref.extractall(model_dir)
-        
-        # read configs for the mode, model_name, etc. from setup_config.json
-        setup_config_path = os.path.join(model_dir, "config.json")
-        if os.path.isfile(setup_config_path):
-            with open(setup_config_path) as setup_config_file:
-                self.setup_config = json.load(setup_config_file)
-        else:
-            raise Exception("Missing the config.json file.")
-
-        logger.info(f"Loading model from {model_pt_path}")
-
-        processor = ViTImageProcessor.from_pretrained('google/vit-base-patch16-224')
-        model = ViTForImageClassification.from_pretrained('google/vit-base-patch16-224')
+        logger.info(f"Loading model from {model_path}")
+        processor = ViTImageProcessor.from_pretrained(model_path)
+        model = ViTForImageClassification.from_pretrained(model_path)
         model.classifier = nn.Identity()
         model.eval()
         model.to(self.device)
-
         self.model = model
         self.processor = processor
+        logger.info(f'Model loaded successfully from {model_path}: {self.model}')
 
-        logger.info(f'Model loaded successfully from {model_pt_path}: {self.model}')
+        logger.info(f"Loading YOLOv8 model from {yolo_model_path}")
+        self.yolo_model = YOLO(yolo_model_path)
+        self.yolo_model.to(self.device)
+        logger.info(f"Loaded YOLOv8 model: {self.yolo_model}")
 
         # Load the index
         logger.info(f"Loading index ...")
-        self.index = faiss.read_index(os.path.join(model_dir, "index.bin"))
+        host = os.environ.get("MILVUS_HOST", "localhost")
+        port = os.environ.get("MILVUS_PORT", "19530")
+        logger.info(f"Connecting to Milvus: {host}:{port}")
+        connections.connect(host=host, port=port)
+        logger.info(f"Connected to Milvus: {host}:{port}")
+        self.collection = Collection('efiss_image_search')
+        logger.info(f"Loading collection: {self.collection.name}")
+        self.collection.load()
+        logger.info(f"Loaded collection to memory: {self.collection.name}")
 
-        if os.path.isfile(os.path.join(model_dir, "remap_index_to_img_path_dict.json")):
-            with open(os.path.join(model_dir, "remap_index_to_img_path_dict.json")) as f:
-                self.remap_index_to_img_path_dict = json.load(f)["remap_index_to_img_path_dict"]
-        else:
-           raise Exception("Missing the remap_index_to_img_path_dict.json file.")
+        self.search_param = {
+            "metric_type": "L2",
+            "ignore_growing": False,
+            # "params": {"nprobe": 16}
+        }
 
-        self.yolo_model = YOLO(os.path.join(model_dir, "yolo.pt"))
-        self.yolo_model.to(self.device)
+    def search(self, query_embedding: np.ndarray, topk: int) -> tuple[list[list[str]], list[list[float]]]:
+        """
+        Search the index for the topk most similar images from Milvus database
 
-    def transform(self, image: np.ndarray) -> torch.Tensor:
-        return self.image_processing(image=image)['image'].float()
-    
+        Args:
+            query_embedding (np.ndarray): the query embedding, batched (1, 768)
+            topk (int): the number of results to return
+            
+        Returns:
+            list[list[str]]: the list of image paths
+            list[list[float]]: the list of distances
+        """
+        result = self.collection.search(
+            data=query_embedding,
+            anns_field="embedding",
+            # expr=None,
+            param={
+                "metric_type": "L2", 
+                # "offset": 5, 
+                # "ignore_growing": False, 
+                "params": {}
+                # "params": {"nprobe": 10}
+            },
+            limit=topk,
+            output_fields=['path'],
+            consistency_level="Strong"
+        )
+        logger.info(f"result: {result}")
+
+        return [list(row.ids) for row in result], [list(row.distances) for row in result]
+
+
     def crop_image(self, img: np.ndarray) -> list[np.ndarray]:
         """
         Crop the image using YOLOv8
@@ -170,17 +190,16 @@ class DeepHashingHandler(VisionHandler):
                 _images.append(image)
 
             # NOTE: for now, we only use the first cropped image
-            cropped_image = _images[0]
+            _cropped_image = _images[0]
 
-            cropped_image: np.ndarray = cv2.cvtColor(cropped_image, cv2.COLOR_BGR2RGB)
-            # cropped_image: torch.Tensor = self.transform(cropped_image)
+            cropped_image: np.ndarray = cv2.cvtColor(_cropped_image, cv2.COLOR_BGR2RGB)
 
             images.append(cropped_image)
             topk_batch.append(topk)
 
         assert len(images) == 1, "Currently, we only support one image at a time, edit config.properties to change this behavior"
         
-        return images, topk_batch
+        return images, _cropped_image, topk_batch
 
     def inference(self, batch):
         """
@@ -188,12 +207,13 @@ class DeepHashingHandler(VisionHandler):
         Args:
             batch (torch.tensor): list of images, topk_batch
                 - images: torch.tensor of shape (batch_size, 3, image_size, image_size)
+                - cropped_image: np.ndarray of shape (3, image_size, image_size)
                 - topk_batch (list[int]): list of topk for each image in the batch
         Returns:
             D (torch.tensor): distance matrix of shape (batch_size, topk)
             I (torch.tensor): index matrix of shape (batch_size, topk)
         """
-        img_tensor, topk_batch = batch
+        img_tensor, cropped_image, topk_batch = batch
         img_tensor: np.ndarray = img_tensor[0]
         topk: int = topk_batch[0]
         logger.info(f"img_tensor.shape: {img_tensor.shape}")
@@ -203,59 +223,48 @@ class DeepHashingHandler(VisionHandler):
         inputs['pixel_values'] = inputs['pixel_values'].to(self.device)
 
         with torch.no_grad():
-            features = self.model(**inputs).logits
+            features: torch.Tensor = self.model(**inputs).logits
         logging.info(f"Features shape: {features.shape}")  # (1, 768)
         logging.info("Finish computing features")
 
         if len(set(topk_batch)) == 1:
             # all topk are the same, we can use batch search
-            D, I = self.index.search(features, topk_batch[0] * 2)
+            images_paths, distances = self.search(features.cpu().numpy(), topk * 2)
             # TODO: topk * 4 to ensure there are too few images after filtered by product
         else:
             raise NotImplementedError("Currently, we only support the case where all topk are the same")
-            I: list = []
-            for i, topk in enumerate(topk_batch):
-                D, _I = self.index.search(features[i, :].reshape(1, -1), topk)
-                logger.info(f"Top {topk} similar images for image {i}: {_I}")
-                logger.info(f"Top {topk} distances for image {i}: {D}")
-                logger.info(f"I.shape: {_I.shape}")
-                I.append(_I[0])
-        
-        # TODO:
-        # If there is any images that have the same distance as the top 1 result,
-        # we will use features to compute the distance and sort them.
-        # This is ensure that if the query exists in the database, it will be the top 1 result.
 
-        return D, I
+        return images_paths, distances, cropped_image
     
     def postprocess(self, inference_output):
         """
         The post-process function receives the return value of the inference function.
         It performs post-processing on the raw output to convert it into a format that is
         easy for the user to understand.
-        
+
         Args:
-            D (torch.tensor): distance matrix of shape (batch_size, topk)
-            I (torch.tensor): index matrix of shape (batch_size, topk)
+            inference_output (torch.tensor): list of images, topk_batch
+                - images_paths (list[list[str]]): list of list of image paths
+                - distances (list[list[float]]): list of list of distances
+                - cropped_image (np.ndarray): the cropped image
         
         Returns:
             responses (list[Dict]): list of responses
-                - index_database_version (str): version of the index database
                 - relevant (list[str]): list of relevant images, each image is a string of image path, sorted by relevance
                 - distances (list[int]): list of distances.
+                - cropped_image (str): base64 encoded image
         """
-        D, I = inference_output
-        logger.info(f"Postprocess: I: {I}")
-        logger.info(f"Postprocess: D: {D}")
-        img_paths: list[list[int]] = [[self.remap_index_to_img_path_dict[str(idx)] for idx in idxs] for idxs in I]
+        images_paths, distances, cropped_image = inference_output
+        logger.info(f"Postprocess images_paths: {images_paths}")
+        logger.info(f"Postprocess distances: {distances}")
         responses: list[dict] = [{
-            "index_database_version": self.setup_config["index_database_version"],
             "relevant": img_path,
-            "distances": dists.tolist()
-        } for img_path, dists in zip(img_paths, D)]
+            "distances": dists,
+            "cropped_image": _cropped_image
+        } for img_path, dists, _cropped_image in zip(images_paths, distances, [cropped_image])]
         logger.info(f"Postprocess: responses: {responses}")
         responses: list[dict] = self.merge_images_with_same_product_id(responses)
-        logger.info(f"Responses after merged: {responses}")
+        logger.info(f"Responses after merged: {[{'relevant': response['relevant'], 'distances': response['distances'], 'cropped_image': response['cropped_image'][:20]} for response in responses]}")
         return responses
 
     
@@ -274,9 +283,9 @@ class DeepHashingHandler(VisionHandler):
         response: dict[str, list]
         for response in responses:
             out_response: dict[str, list] = {
-                "index_database_version": response["index_database_version"],  # type: ignore
                 "relevant": [],
-                "distances": []
+                "distances": [],
+                "cropped_image": base64.b64encode(cv2.imencode('.jpg', response["cropped_image"])[1]).decode('utf-8')
             }
             img_path_to_dist: dict[str, int] = {}
             for img_path, dist in zip(response["relevant"], response["distances"]):
