@@ -1,4 +1,4 @@
-FROM python:3.11-bullseye
+FROM python:3.11-bullseye as builder
 RUN mkdir -p /install
 WORKDIR /install
 
@@ -20,16 +20,14 @@ RUN apt-get update && apt-get -y upgrade \
 COPY searcher/requirements.txt /install
 RUN pip install -r requirements.txt
 
-ARG VERSION=1.2.0
-ARG MODEL_NAME=relahash-medium-64bits
-ARG YOLO_MODEL_PATH=torchscripts_models/yolo/yolo.pt
-
 RUN mkdir -p /app
 WORKDIR /app
 
-# COPY index/${VERSION} /app/index/${VERSION}
-# COPY torchscripts_models/${MODEL_NAME}.pt /app/torchscripts_models/model-image-retrieval.pt
-COPY ${YOLO_MODEL_PATH}.pt /app/torchscripts_models/yolo.pt
+ARG VERSION=1.2.0
+ARG YOLO_MODEL_PATH=torchscripts_models/yolo/yolo.pt
+
+COPY ${YOLO_MODEL_PATH} /app/model/yolo.pt
+COPY index/${VERSION} /app/model/
 COPY searcher/config.properties searcher/deep_hashing_handler.py /app/
   
 # create model archive file packaging model artifacts and dependencies
@@ -37,9 +35,8 @@ RUN torch-model-archiver -f \
   --model-name=model-image-retrieval \
   --version=1.0 \
   --handler=/app/deep_hashing_handler.py \
-  --extra-files "/app/torchscripts_models/yolo.pt"
-#   --extra-files "/app/index/${VERSION}/config.json,/app/index/${VERSION}/remap_index_to_img_path_dict.json,/app/index/${VERSION}/index.bin,/app/torchscripts_models/yolo.pt"
-#   --serialized-file=/app/torchscripts_models/model-image-retrieval.pt \
+  --serialized-file=/app/model/yolo.pt \
+  --extra-files "/app/model/config.json,/app/model/preprocessor_config.json,/app/model/pytorch_model.bin"
 
 RUN mkdir -p /app/model_store && \
   mv model-image-retrieval.mar /app/model_store

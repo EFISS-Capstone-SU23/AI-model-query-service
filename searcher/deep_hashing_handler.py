@@ -32,16 +32,12 @@ class DeepHashingHandler(VisionHandler):
         self.manifest = ctx.manifest
         properties = ctx.system_properties
         model_dir = properties.get("model_dir")
-        # serialized_file = self.manifest["model"]["serializedFile"]
-        # model_path = os.path.join(model_dir, serialized_file)
-        model_path = model_dir + "/model"
+        serialized_file = self.manifest["model"]["serializedFile"]
+        yolo_model_path = os.path.join(model_dir, serialized_file)
+        model_path = model_dir
 
         self.device = torch.device( "cuda:" + str(properties.get("gpu_id")) if torch.cuda.is_available() and properties.get("gpu_id") is not None else "cpu")
         logging.info(f"Using device: {self.device}")
-
-        if os.path.isfile(os.path.join(model_dir, "model.zip")):
-            with zipfile.ZipFile(model_dir + "/model.zip", "r") as zip_ref:
-                zip_ref.extractall(model_path)
 
         logger.info(f"Loading model from {model_path}")
         processor = ViTImageProcessor.from_pretrained(model_path)
@@ -52,8 +48,8 @@ class DeepHashingHandler(VisionHandler):
         self.processor = processor
         logger.info(f'Model loaded successfully from {model_path}: {self.model}')
 
-        logger.info(f"Loading YOLOv8 model ...")
-        self.yolo_model = YOLO(os.path.join(model_dir, "yolo.pt"))
+        logger.info(f"Loading YOLOv8 model from {yolo_model_path}")
+        self.yolo_model = YOLO(yolo_model_path)
         self.yolo_model.to(self.device)
         logger.info(f"Loaded YOLOv8 model: {self.yolo_model}")
 
