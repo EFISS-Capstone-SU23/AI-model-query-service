@@ -2,7 +2,6 @@ import torch
 import base64
 import numpy as np
 from ts.torch_handler.vision_handler import VisionHandler
-import zipfile
 import os
 import json
 import logging

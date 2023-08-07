@@ -1,14 +1,11 @@
 torchserve
 torch-model-archiver
 torch-workflow-archiver
-faiss-cpu
 --extra-index-url https://download.pytorch.org/whl/cpu
 torch
 torchvision
-torchaudio
 pyyaml
 captum
-albumentations
 opencv-python
 protobuf==3.20.*
 ultralytics
