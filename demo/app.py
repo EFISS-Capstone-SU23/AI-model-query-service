@@ -6,7 +6,7 @@ from flask import Flask, request, render_template, redirect, url_for
 app = Flask(__name__)
 
 # API_URL = "http://10.66.66.2:5000/predictions/image-retrieval-v1.0"
-API_URL = "https://dev.efiss.tech/ai/predictions/image-retrieval-v1.0"
+API_URL = "http://localhost:5000/predictions/image-retrieval-v1.0"
 # API_URL = "http://localhost:5000/predictions/image-retrieval-v1.0"
 
 @app.route('/', methods=['GET', 'POST'])
@@ -18,7 +18,7 @@ def index():
             encoded_image = base64.b64encode(image_data).decode('utf-8')
 
             payload = {
-                "top_k": 10,
+                "top_k": 10000,
                 "image": encoded_image,
                 "debug": True
             }
