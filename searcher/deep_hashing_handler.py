@@ -2,6 +2,7 @@ import torch
 import base64
 import numpy as np
 from ts.torch_handler.vision_handler import VisionHandler
+import zipfile
 import os
 import json
 import logging
@@ -32,21 +33,24 @@ class DeepHashingHandler(VisionHandler):
         properties = ctx.system_properties
         model_dir = properties.get("model_dir")
         # serialized_file = self.manifest["model"]["serializedFile"]
-        # model_pt_path = os.path.join(model_dir, serialized_file)
-        model_pt_path = None
+        # model_path = os.path.join(model_dir, serialized_file)
+        model_path = model_dir + "/model"
 
         self.device = torch.device( "cuda:" + str(properties.get("gpu_id")) if torch.cuda.is_available() and properties.get("gpu_id") is not None else "cpu")
         logging.info(f"Using device: {self.device}")
 
-        logger.info(f"Loading model from {model_pt_path}")
-        processor = ViTImageProcessor.from_pretrained('google/vit-base-patch16-224')
-        model = ViTForImageClassification.from_pretrained('google/vit-base-patch16-224')
-        model.classifier = nn.Identity()
+        if os.path.isfile(os.path.join(model_dir, "model.zip")):
+            with zipfile.ZipFile(model_dir + "/model.zip", "r") as zip_ref:
+                zip_ref.extractall(model_path)
+
+        logger.info(f"Loading model from {model_path}")
+        processor = ViTImageProcessor.from_pretrained(model_path)
+        model = ViTForImageClassification.from_pretrained(model_path)
         model.eval()
         model.to(self.device)
         self.model = model
         self.processor = processor
-        logger.info(f'Model loaded successfully from {model_pt_path}: {self.model}')
+        logger.info(f'Model loaded successfully from {model_path}: {self.model}')
 
         logger.info(f"Loading YOLOv8 model ...")
         self.yolo_model = YOLO(os.path.join(model_dir, "yolo.pt"))
@@ -263,7 +267,7 @@ class DeepHashingHandler(VisionHandler):
         } for img_path, dists, _cropped_image in zip(images_paths, distances, [cropped_image])]
         logger.info(f"Postprocess: responses: {responses}")
         responses: list[dict] = self.merge_images_with_same_product_id(responses)
-        logger.info(f"Responses after merged: {responses}")
+        logger.info(f"Responses after merged: {[{'relevant': response['relevant'], 'distances': response['distances'], 'cropped_image': response['cropped_image'][:20]} for response in responses]}")
         return responses
 
     
