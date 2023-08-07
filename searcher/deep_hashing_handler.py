@@ -36,45 +36,26 @@ class DeepHashingHandler(VisionHandler):
         # model_pt_path = os.path.join(model_dir, serialized_file)
         model_pt_path = None
 
-        self.device = torch.device(
-            "cuda:" + str(properties.get("gpu_id"))
-            if torch.cuda.is_available() and properties.get("gpu_id") is not None
-            else "cpu"
-        )
+        self.device = torch.device( "cuda:" + str(properties.get("gpu_id")) if torch.cuda.is_available() and properties.get("gpu_id") is not None else "cpu")
         logging.info(f"Using device: {self.device}")
 
-        if os.path.isfile(os.path.join(model_dir, "module.zip")):
-            with zipfile.ZipFile(model_dir + "/module.zip", "r") as zip_ref:
-                zip_ref.extractall(model_dir)
-        
-        # read configs for the mode, model_name, etc. from setup_config.json
-        setup_config_path = os.path.join(model_dir, "config.json")
-        if os.path.isfile(setup_config_path):
-            with open(setup_config_path) as setup_config_file:
-                self.setup_config = json.load(setup_config_file)
-        else:
-            raise Exception("Missing the config.json file.")
-
         logger.info(f"Loading model from {model_pt_path}")
-
         processor = ViTImageProcessor.from_pretrained('google/vit-base-patch16-224')
         model = ViTForImageClassification.from_pretrained('google/vit-base-patch16-224')
         model.classifier = nn.Identity()
         model.eval()
         model.to(self.device)
-
         self.model = model
         self.processor = processor
-
         logger.info(f'Model loaded successfully from {model_pt_path}: {self.model}')
+
+        logger.info(f"Loading YOLOv8 model ...")
+        self.yolo_model = YOLO(os.path.join(model_dir, "yolo.pt"))
+        self.yolo_model.to(self.device)
+        logger.info(f"Loaded YOLOv8 model: {self.yolo_model}")
 
         # Load the index
         logger.info(f"Loading index ...")
-
-        self.yolo_model = YOLO(os.path.join(model_dir, "yolo.pt"))
-        self.yolo_model.to(self.device)
-
-
         host = os.environ.get("MILVUS_HOST", "localhost")
         port = os.environ.get("MILVUS_PORT", "19530")
         logger.info(f"Connecting to Milvus: {host}:{port}")
@@ -266,7 +247,6 @@ class DeepHashingHandler(VisionHandler):
         
         Returns:
             responses (list[Dict]): list of responses
-                - index_database_version (str): version of the index database
                 - relevant (list[str]): list of relevant images, each image is a string of image path, sorted by relevance
                 - distances (list[int]): list of distances.
         """
@@ -274,7 +254,6 @@ class DeepHashingHandler(VisionHandler):
         logger.info(f"Postprocess images_paths: {images_paths}")
         logger.info(f"Postprocess distances: {distances}")
         responses: list[dict] = [{
-            "index_database_version": self.setup_config["index_database_version"],
             "relevant": img_path,
             "distances": dists
         } for img_path, dists in zip(images_paths, distances)]
@@ -299,7 +278,6 @@ class DeepHashingHandler(VisionHandler):
         response: dict[str, list]
         for response in responses:
             out_response: dict[str, list] = {
-                "index_database_version": response["index_database_version"],  # type: ignore
                 "relevant": [],
                 "distances": []
             }
