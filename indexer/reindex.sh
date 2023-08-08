@@ -30,25 +30,25 @@ fi
 
 set -x
 
-# /home/saplab/anaconda3/envs/thaiminhpv/bin/python indexer/indexer.py \
-#     --database database_info.txt \
-#     --model_path torchscripts_models/$MODEL_NAME.pt \
-#     --device cuda:0 \
-#     --batch_size 64 \
-#     --num_workers 16 \
-#     --image_size 224 \
-#     --new_index_database_version $VERSION
+/home/saplab/anaconda3/envs/thaiminhpv/bin/python indexer/indexer.py \
+    --database database_info.txt \
+    --model_path torchscripts_models/$MODEL_NAME.pt \
+    --device cuda:0 \
+    --batch_size 48 \
+    --num_workers 16 \
+    --image_size 224 \
+    --new_index_database_version $VERSION
 
-docker build -t ai:latest \
-    -t ai:$VERSION-cpu \
-    -t asia-southeast1-docker.pkg.dev/efiss-394203/efiss/ai:latest \
-    -t asia-southeast1-docker.pkg.dev/efiss-394203/efiss/ai:$VERSION-cpu \
-    --build-arg VERSION=$VERSION \
-    --build-arg YOLO_MODEL_PATH=$YOLO_MODEL_PATH \
-    -f searcher/Dockerfile .
+# docker build -t ai:latest \
+#     -t ai:$VERSION-cpu \
+#     -t asia-southeast1-docker.pkg.dev/efiss-394203/efiss/ai:latest \
+#     -t asia-southeast1-docker.pkg.dev/efiss-394203/efiss/ai:$VERSION-cpu \
+#     --build-arg VERSION=$VERSION \
+#     --build-arg YOLO_MODEL_PATH=$YOLO_MODEL_PATH \
+#     -f searcher/Dockerfile .
 
-docker push asia-southeast1-docker.pkg.dev/efiss-394203/efiss/ai:$VERSION-cpu
-docker push asia-southeast1-docker.pkg.dev/efiss-394203/efiss/ai:latest
+# docker push asia-southeast1-docker.pkg.dev/efiss-394203/efiss/ai:$VERSION-cpu
+# docker push asia-southeast1-docker.pkg.dev/efiss-394203/efiss/ai:latest
 
 
 # docker build -t ai:latest-cuda \

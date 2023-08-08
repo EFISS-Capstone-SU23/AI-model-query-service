@@ -19,6 +19,7 @@ from time import time
 from datetime import datetime
 import albumentations as A
 from albumentations.pytorch import ToTensorV2
+import timm
 
 
 class Indexer:
@@ -88,16 +89,20 @@ class Indexer:
         # load model
         # model = torch.jit.load(model_path, map_location=self.configs["device"])
         # model.eval()
+        model = timm.create_model(
+            'eva02_base_patch14_448.mim_in22k_ft_in22k_in1k',
+            pretrained=True,
+            num_classes=0,  # remove classifier nn.Linear
+        )
+        model = model.eval()
+        model.to(self.configs['device'])
+
+        # get model specific transforms (normalization, resize)
+        data_config = timm.data.resolve_model_data_config(model)
+        transforms = timm.data.create_transform(**data_config, is_training=False)
 
         # create data
-        dataset = DeepHashingDataset(database, transform=A.Compose([
-            A.Resize(image_size, image_size),
-            A.Normalize(
-                mean=[0.485, 0.456, 0.406],
-                std=[0.229, 0.224, 0.225],
-            ),
-            ToTensorV2(),
-        ]))
+        dataset = DeepHashingDataset(database, transform=transforms)
 
         dataloader = torch.utils.data.DataLoader(
             dataset,
@@ -108,29 +113,33 @@ class Indexer:
             collate_fn=dataset.collate_fn,
         )
 
-        # logging.info("Compute hashcodes...")
-        # # compute hashcodes
-        # hashcodes = []
-        # with torch.no_grad():
-        #     pbar = tqdm(
-        #         dataloader,
-        #         desc="Compute hashcodes",
-        #         total=len(dataloader),
-        #         ascii=True,
-        #         ncols=100,
-        #         disable=False
-        #     )
-        #     for batch in pbar:
-        #         batch = batch.to(self.configs["device"])
-        #         hashcode = model(batch)
-        #         hashcodes.append(hashcode.cpu())
-        # hashcodes = torch.cat(hashcodes, dim=0)
-        # self.configs["hashcode_length"] = hashcodes.shape[1]
-        # logging.info(f"Hashcodes shape: {hashcodes.shape}")
-        # del model, dataset, dataloader
+        logging.info("Compute hashcodes...")
+        # compute hashcodes
+        hashcodes = []
+        with torch.no_grad():
+            pbar = tqdm(
+                dataloader,
+                desc="Compute hashcodes",
+                total=len(dataloader),
+                ascii=True,
+                ncols=100,
+                disable=False
+            )
+            for batch in pbar:
+                batch = batch.to(self.configs["device"])
+                hashcode = model(batch)
+                hashcodes.append(hashcode.cpu())
+        hashcodes = torch.cat(hashcodes, dim=0)
+        self.configs["hashcode_length"] = hashcodes.shape[1]
+        logging.info(f"Hashcodes shape: {hashcodes.shape}")
+        torch.save({
+            "embedding": hashcodes
+        }, '/media/saplab/MinhNVMe/relahash/eva02/embeddings.pt')
+        del model, dataset, dataloader
         # hashcodes = self.convert_int(hashcodes)
-        # logging.info("Finish computing hashcodes")
-        # return hashcodes
+        logging.info("Finish computing hashcodes")
+        sys.exit(0)
+        return hashcodes
 
     def dump_index(
         self,

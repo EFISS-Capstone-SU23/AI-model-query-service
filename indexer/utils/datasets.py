@@ -4,8 +4,7 @@ from torch.utils.data import Dataset
 import cv2
 import albumentations as A
 from albumentations.pytorch import ToTensorV2
-
-from PIL import ImageFile
+from PIL import ImageFile, Image
 ImageFile.LOAD_TRUNCATED_IMAGES = True
 
 class DeepHashingDataset(Dataset):
@@ -14,10 +13,9 @@ class DeepHashingDataset(Dataset):
         self.transform = transform
     
     def get_image(self, img_path: str):
-        img = cv2.imread(img_path)
-        img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+        img = Image.open(img_path)
         if self.transform is not None:
-            img = self.transform(image=img)['image'].float()
+            img = self.transform(img)
         return img
 
     def __len__(self):
