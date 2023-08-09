@@ -1,3 +1,6 @@
+ARG VERSION=1.2.0
+ARG YOLO_MODEL_PATH=torchscripts_models/yolo/yolo.pt
+
 FROM python:3.11-bullseye as builder
 
 # Avoid to write .pyc files on the import of source modules
@@ -28,9 +31,6 @@ RUN rm -rf /usr/local/lib/python3.11/site-packages/ && \
     ln -s /install /usr/local/lib/python3.11/site-packages
 
 WORKDIR /app
-
-ARG VERSION=1.2.0
-ARG YOLO_MODEL_PATH=torchscripts_models/yolo/yolo.pt
 
 COPY ${YOLO_MODEL_PATH} /app/model/yolo.pt
 COPY index/${VERSION} /app/model/
