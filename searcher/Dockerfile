@@ -32,6 +32,8 @@ RUN rm -rf /usr/local/lib/python3.11/site-packages/ && \
 
 WORKDIR /app
 
+ARG VERSION
+ARG YOLO_MODEL_PATH
 COPY ${YOLO_MODEL_PATH} /app/model/yolo.pt
 COPY index/${VERSION} /app/model/
 COPY searcher/config.properties searcher/deep_hashing_handler.py /app/
