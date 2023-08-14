@@ -9,31 +9,8 @@ Request:
 ```json
 {
     "top_k": 10,
+    "diversity": 1,  // integer, range from 1-20
     "image": "<base64 encoded image>"
-}
-```
-
-Response
-
-```json
-{
-    "index_database_version": "1.2.0", // version of the index database
-    "relevant": [
-        "data/abc.com/69_abc_com.jpg",
-        "data/abc.com/42_abc_com.jpg"
-    ],  // file path of relevant images, sorted by relevance from most relevant to least relevant
-}
-```
-
-### Debug mode
-
-Request:
-
-```json
-{
-    "top_k": 10,
-    "image": "<base64 encoded image>",
-    "debug": true,
 }
 ```
 
@@ -49,7 +26,8 @@ Response
     "distances": [
         2,
         50
-    ]
+    ],
+    "cropped_image": "<base64 encoded image>" // cropped image
 }
 ```
 
