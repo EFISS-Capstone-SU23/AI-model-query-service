@@ -18,7 +18,8 @@ def index():
             encoded_image = base64.b64encode(image_data).decode('utf-8')
 
             payload = {
-                "top_k": 10000,
+                "top_k": 10,
+                "diversity": 1,
                 "image": encoded_image,
                 "debug": True
             }
