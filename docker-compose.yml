@@ -6,6 +6,7 @@ services:
       dockerfile: searcher/Dockerfile
       args:
         - VERSION=${VERSION}
+        - YOLO_MODEL_PATH=${YOLO_MODEL_PATH}
     image: ai:latest
     container_name: ai
     restart: on-failure
