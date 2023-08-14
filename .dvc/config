@@ -1,0 +1,4 @@
+[core]
+    remote = saplab
+['remote "saplab"']
+    url = ssh://saplab/media/saplab/Data_Win/RSI_Do_An/thaiminhpv/dvc_storage
