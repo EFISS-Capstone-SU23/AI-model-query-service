@@ -180,10 +180,10 @@ cython_debug/
 torchscripts_models/
 torchscripts_models
 model_store/
-index/
+# index/
 *.json
 *.txt
-index
+# index
 *.pth
 *.pt
 wandb/
@@ -193,3 +193,4 @@ lib/
 *.arrow
 *.jpg
 *.jpeg
+*.bin
