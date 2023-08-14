@@ -148,6 +148,30 @@ class DeepHashingHandler(VisionHandler):
         inputs = self.processor(images=img, return_tensors="pt")
         inputs['pixel_values'] = inputs['pixel_values'].squeeze()
         return inputs
+    
+    @staticmethod
+    def diversify(image_paths: list[str], distances: list[float], diversity: int) -> tuple[list[str], list[float]]:
+        """
+        Diversify the results by removing similar images
+        
+        Args:
+            image_paths (list[str]): the list of image paths
+            distances (list[float]): the list of distances
+            diversity (int): the number of incremental steps to take for pointer
+        
+        Returns:
+            list[str]: the diversified list of image paths
+            list[float]: the diversified list of distances
+        """
+        out_image_paths: list[str] = []
+        out_distances: list[float] = []
+        
+        for i in range(0, len(image_paths), diversity):
+            out_image_paths.append(image_paths[i])
+            out_distances.append(distances[i])
+        
+        return out_image_paths, out_distances
+
 
     def preprocess(self, data):
         """The preprocess function of MNIST program converts the input data to a float tensor
@@ -181,6 +205,7 @@ class DeepHashingHandler(VisionHandler):
                 logger.error(f"Unknown input type: {type(req)}")
             topk: int = req.get("topk", 10)
             image: str = req.get("image")
+            diversity: int = req.get("diversity", 1)
 
             image: np.ndarray = self.data_uri_to_cv2_img(image)
             _images: list[np.ndarray] = self.crop_image(image)
@@ -199,7 +224,7 @@ class DeepHashingHandler(VisionHandler):
 
         assert len(images) == 1, "Currently, we only support one image at a time, edit config.properties to change this behavior"
         
-        return images, _cropped_image, topk_batch
+        return images, _cropped_image, topk_batch, diversity
 
     def inference(self, batch):
         """
@@ -213,7 +238,7 @@ class DeepHashingHandler(VisionHandler):
             D (torch.tensor): distance matrix of shape (batch_size, topk)
             I (torch.tensor): index matrix of shape (batch_size, topk)
         """
-        img_tensor, cropped_image, topk_batch = batch
+        img_tensor, cropped_image, topk_batch, diversity = batch
         img_tensor: np.ndarray = img_tensor[0]
         topk: int = topk_batch[0]
         logger.info(f"img_tensor.shape: {img_tensor.shape}")
@@ -229,10 +254,13 @@ class DeepHashingHandler(VisionHandler):
 
         if len(set(topk_batch)) == 1:
             # all topk are the same, we can use batch search
-            images_paths, distances = self.search(features.cpu().numpy(), topk * 2)
+            images_paths, distances = self.search(features.cpu().numpy(), topk * 2 * diversity)
             # TODO: topk * 4 to ensure there are too few images after filtered by product
         else:
             raise NotImplementedError("Currently, we only support the case where all topk are the same")
+
+        if diversity > 1:
+            images_paths, distances = self.diversify(images_paths, distances, diversity)
 
         return images_paths, distances, cropped_image
     
