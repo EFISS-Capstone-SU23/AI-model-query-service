@@ -9,10 +9,24 @@
         <input type="file" name="image" accept="image/*">
         <input type="submit" value="Upload">
     </form>
+    {% if error %}
+        <p style="color: red;">{{ error }}</p>
+    {% endif %}
+
+    {% if original_image %}
+        <h2>Original Image</h2>
+        <img src="{{ original_image }}" width="200">
+    {% endif %}
+
+    {% if cropped_image %}
+        <h2>Cropped Image</h2>
+        <img src="{{ cropped_image }}" width="200">
+    {% endif %}
+
     {% if images %}
         <h2>Relevant Images</h2>
         {% for image, dist in zip(images, distances) %}
-            <img src="{{ image }}" width="200" height="200">
+            <img src="{{ image }}" width="200">
             <p style="display: inline-block; width: 200;">{{ dist }}</p>
         {% endfor %}
     {% endif %}
