@@ -150,7 +150,7 @@ class DeepHashingHandler(VisionHandler):
         return inputs
     
     @staticmethod
-    def diversify(image_paths: list[str], distances: list[float], diversity: int) -> tuple[list[str], list[float]]:
+    def diversify(image_paths: list[list[str]], distances: list[list[float]], diversity: int) -> tuple[list[list[str]], list[list[float]]]:
         """
         Diversify the results by removing similar images
         
@@ -163,12 +163,19 @@ class DeepHashingHandler(VisionHandler):
             list[str]: the diversified list of image paths
             list[float]: the diversified list of distances
         """
-        out_image_paths: list[str] = []
-        out_distances: list[float] = []
+        out_image_paths: list[list[str]] = []
+        out_distances: list[list[float]] = []
         
-        for i in range(0, len(image_paths), diversity):
-            out_image_paths.append(image_paths[i])
-            out_distances.append(distances[i])
+        for image_path, distance in zip(image_paths, distances):
+            _out_image_paths: list[str] = []
+            _out_distances: list[float] = []
+
+            for i in range(0, len(image_path), diversity):
+                _out_image_paths.append(image_path[i])
+                _out_distances.append(distance[i])
+            
+            out_image_paths.append(_out_image_paths)
+            out_distances.append(_out_distances)
         
         return out_image_paths, out_distances
 
@@ -260,7 +267,9 @@ class DeepHashingHandler(VisionHandler):
             raise NotImplementedError("Currently, we only support the case where all topk are the same")
 
         if diversity > 1:
+            logger.info(f"Before diversification: {len(images_paths)}: {images_paths}")
             images_paths, distances = self.diversify(images_paths, distances, diversity)
+            logger.info(f"After diversification: {len(images_paths)}: {images_paths}")
 
         return images_paths, distances, cropped_image
     
