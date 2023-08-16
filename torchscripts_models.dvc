@@ -1,0 +1,6 @@
+outs:
+- md5: d74646953ca1a10066ae0419cf988fbb.dir
+  size: 6199214
+  nfiles: 1
+  hash: md5
+  path: torchscripts_models
