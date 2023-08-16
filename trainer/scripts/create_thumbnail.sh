@@ -17,11 +17,14 @@ process_images() {
             process_images "$file"
         elif [ -f "$file" ]; then
             # If the item is a file, process the image
-            sub_dir="$dest_dir/${file#$source_dir/}"
-            output_file="$sub_dir/${file##*/}"
-            
+            output_file="$dest_dir/${file#$source_dir/}"
+
+            echo ---
             echo "Processing $file -> $output_file"
-            echo convert "$file" -resize x150 "$output_file"
+            echo convert "$file" -geometry x150 "$output_file"
+            convert "$file" -geometry x150 "$output_file"
+            echo ---
+            break
         fi
     done
 }
