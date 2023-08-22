@@ -28,29 +28,28 @@ from google.cloud import storage
 #     files_list = f.read().splitlines()
 
 class GenerateThumbnail(beam.DoFn):
+    def __init__(self, bucket_name="efiss"):
+        self.bucket_name = bucket_name
+        self.gcs = beam.io.gcsio.GcsIO()
+        self.new_height = 150
+        
     def process(self, element):
-        import apache_beam as beam
-        from PIL import Image
-        import io
-        bucket_name = "efiss"
         print(f"Processing {element}...")
-        input_path = element
-        input_path = f"gs://{bucket_name}/{input_path}"
+        input_path = f"gs://{self.bucket_name}/{element}"
         output_path = input_path.replace("product_images", "thumbnail")
         
         # Load the image from GCS
-        with beam.io.gcsio.GcsIO().open(input_path, "rb") as f:
+        with self.gcs.open(input_path, "rb") as f:
             image_bytes = f.read()
 
         # Generate thumbnail
         img = Image.open(io.BytesIO(image_bytes))
         original_width, original_height = img.size
-        new_height = 150
-        new_width = int(original_width * (new_height / original_height))
-        img.thumbnail((new_width, new_height))
+        new_width = int(original_width * (self.new_height / original_height))
+        img.thumbnail((new_width, self.new_height))
         
         # Save the thumbnail to GCS
-        with beam.io.gcsio.GcsIO().open(output_path, "wb") as f:
+        with self.gcs.open(output_path, "wb") as f:
             img.save(f, format=img.format)
 
         print(f"Done processing {element}.")
@@ -62,22 +61,23 @@ def run_pipeline(bucket_name):
         runner="DataflowRunner",
         project="efiss-duong",
         # project='efiss-393918',
-        region="us-central1",
-        # region="asia-southeast1",
-        # worker_zone="asia-southeast1-b",
+        # region="us-central1",
+        region="asia-southeast1",
+        worker_zone="asia-southeast1-b",
         machine_type="n1-standard-2",
         temp_location="gs://efiss-temp/temp",
         requirements_file='requirements.txt',
         autoscaling_algorithm='NONE',
-        num_workers=4
+        num_workers=1,
+        number_of_worker_harness_threads=24,
+        save_main_session=True,
     )
     with beam.Pipeline(options=pipeline_options) as p:
         files = (
             p
             | 'List Files' >> beam.io.ReadFromText(f"gs://{bucket_name}/data/files_list_efiss.txt")
-            | 'Process Files' >> beam.ParDo(GenerateThumbnail())
+            | 'Process Files' >> beam.ParDo(GenerateThumbnail(bucket_name))
         )
-            # | 'List Files' >> beam.Create(files_list)
 
 if __name__ == '__main__':
     bucket_name = 'efiss'
