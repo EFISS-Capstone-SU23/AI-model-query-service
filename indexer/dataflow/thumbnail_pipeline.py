@@ -24,8 +24,8 @@ from google.cloud import storage
 # with open('files_list_efiss.txt', 'w') as f:
 #     for item in files_list:
 #         f.write("%s\n" % item)
-with open('files_list_efiss.txt', 'r') as f:
-    files_list = f.read().splitlines()
+# with open('files_list_efiss.txt', 'r') as f:
+#     files_list = f.read().splitlines()
 
 class GenerateThumbnail(beam.DoFn):
     def process(self, element):
@@ -73,9 +73,10 @@ def run_pipeline(bucket_name):
     with beam.Pipeline(options=pipeline_options) as p:
         files = (
             p
-            | 'List Files' >> beam.Create(files_list)
+            | 'List Files' >> beam.io.ReadFromText(f"gs://{bucket_name}/data/files_list_efiss.txt")
             | 'Process Files' >> beam.ParDo(GenerateThumbnail())
         )
+            # | 'List Files' >> beam.Create(files_list)
 
 if __name__ == '__main__':
     bucket_name = 'efiss'
