@@ -11,6 +11,9 @@ from ultralytics import YOLO
 from transformers import ViTImageProcessor, ViTForImageClassification
 import torch.nn as nn
 from pymilvus import connections, Collection
+import timm
+from PIL import Image
+import io
 
 logger = logging.getLogger(__name__)
 
@@ -22,6 +25,12 @@ class DeepHashingHandler(VisionHandler):
         encoded_data = uri.split(',')[-1]
         nparr = np.frombuffer(base64.b64decode(encoded_data), np.uint8)
         img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+        return img
+
+    @staticmethod
+    def base64_to_PIL_img(uri: str) -> np.ndarray:
+        imgdata = base64.b64decode(uri.split(',')[-1])
+        img = Image.open(io.BytesIO(imgdata))
         return img
 
     def __init__(self):
@@ -40,13 +49,20 @@ class DeepHashingHandler(VisionHandler):
         logging.info(f"Using device: {self.device}")
 
         logger.info(f"Loading model from {model_path}")
-        processor = ViTImageProcessor.from_pretrained(model_path)
-        model = ViTForImageClassification.from_pretrained(model_path)
-        model.classifier = nn.Identity()
-        model.eval()
+
+        model = timm.create_model(
+            'eva02_base_patch14_448.mim_in22k_ft_in22k_in1k',
+            pretrained=True,
+            num_classes=0,  # remove classifier nn.Linear
+        )
+        model = model.eval()
+        # get model specific transforms (normalization, resize)
+        data_config = timm.data.resolve_model_data_config(model)
+        transforms = timm.data.create_transform(**data_config, is_training=False)
+
         model.to(self.device)
         self.model = model
-        self.processor = processor
+        self.transforms = transforms
         logger.info(f'Model loaded successfully from {model_path}: {self.model}')
 
         logger.info(f"Loading YOLOv8 model from {yolo_model_path}")
@@ -134,20 +150,6 @@ class DeepHashingHandler(VisionHandler):
             return out
         
         return out
-    
-    def tokenize(self, img: np.ndarray) -> dict[str, torch.Tensor]:
-        """
-        Tokenize the image using ViT
-    
-        Args:
-            img (np.ndarray): the image to tokenize, which has been ran through cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-    
-        Returns:
-            dict[str, torch.Tensor]: the tokenized image
-        """
-        inputs = self.processor(images=img, return_tensors="pt")
-        inputs['pixel_values'] = inputs['pixel_values'].squeeze()
-        return inputs
     
     @staticmethod
     def diversify(image_paths: list[list[str]], distances: list[list[float]], diversity: int) -> tuple[list[list[str]], list[list[float]]]:
