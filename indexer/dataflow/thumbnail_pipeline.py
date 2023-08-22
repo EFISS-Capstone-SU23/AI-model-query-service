@@ -20,22 +20,26 @@ class GenerateThumbnail(beam.DoFn):
         input_path = f"gs://{self.bucket_name}/{element}"
         output_path = input_path.replace("product_images", "thumbnail")
         
-        # Load the image from GCS
-        with self.gcs.open(input_path, "rb") as f:
-            image_bytes = f.read()
+        try:
+            # Load the image from GCS
+            with self.gcs.open(input_path, "rb") as f:
+                image_bytes = f.read()
 
-        # Generate thumbnail
-        img = self.Image.open(self.io.BytesIO(image_bytes))
-        original_width, original_height = img.size
-        new_width = int(original_width * (self.new_height / original_height))
-        img.thumbnail((new_width, self.new_height))
-        
-        # Save the thumbnail to GCS
-        with self.gcs2.open(output_path, "wb") as f:
-            img.save(f, format=img.format)
+            # Generate thumbnail
+            img = self.Image.open(self.io.BytesIO(image_bytes))
+            original_width, original_height = img.size
+            new_width = int(original_width * (self.new_height / original_height))
+            img.thumbnail((new_width, self.new_height))
+            
+            # Save the thumbnail to GCS
+            with self.gcs2.open(output_path, "wb") as f:
+                img.save(f, format=img.format)
 
-        print(f"Done processing {element}.")
-        return [output_path]
+            print(f"Done processing {element}.")
+            return [output_path]
+        except Exception as e:
+            print(f"Error processing {element}: {e}")
+            return [f"Error processing {element}: {e}"]
 
 
 if __name__ == "__main__":
