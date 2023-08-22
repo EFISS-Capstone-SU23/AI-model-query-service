@@ -60,14 +60,15 @@ class GenerateThumbnail(beam.DoFn):
 def run_pipeline(bucket_name):
     pipeline_options = PipelineOptions(
         runner="DataflowRunner",
-        project="efiss-394203",
+        project="efiss-duong",
         # project='efiss-393918',
-        # region="us-central1",
-        region="asia-southeast1",
+        region="us-central1",
+        # region="asia-southeast1",
         # worker_zone="asia-southeast1-b",
-        machine_type="n1-standard-1",
-        temp_location="gs://efiss-test/temp",
+        machine_type="n1-standard-2",
+        temp_location="gs://efiss-temp/temp",
         requirements_file='requirements.txt',
+        autoscaling_algorithm='NONE',
         num_workers=4
     )
     with beam.Pipeline(options=pipeline_options) as p:
