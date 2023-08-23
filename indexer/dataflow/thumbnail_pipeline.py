@@ -54,9 +54,10 @@ if __name__ == "__main__":
         machine_type="n1-standard-2",
         temp_location="gs://efiss-tmp-us/temp",
         requirements_file='requirements.txt',
-        autoscaling_algorithm='NONE',
-        num_workers=4,
-        number_of_worker_harness_threads=150,
+        autoscaling_algorithm='THROUGHPUT_BASED',
+        num_workers=1,
+        max_num_workers=4,
+        number_of_worker_harness_threads=100,
         save_main_session=True,
     )
     with beam.Pipeline(options=pipeline_options) as p:
