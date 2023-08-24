@@ -56,7 +56,7 @@ if __name__ == "__main__":
         region="asia-southeast1",
         # worker_zone="asia-southeast1-b",
         machine_type="n1-standard-2",
-        temp_location="gs://efiss-temp/temp",
+        temp_location="gs://efiss-tmp-us/temp",
         requirements_file='requirements.txt',
         autoscaling_algorithm='THROUGHPUT_BASED',
         num_workers=1,
