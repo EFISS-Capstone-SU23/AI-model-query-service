@@ -21,6 +21,10 @@ class GenerateThumbnail(beam.DoFn):
         output_path = input_path.replace("product_images", "thumbnail")
         
         try:
+            if self.gcs2.exists(output_path):
+                print(f"Thumbnail already exists for {element}.")
+                return [output_path]
+
             # Load the image from GCS
             with self.gcs.open(input_path, "rb") as f:
                 image_bytes = f.read()
@@ -48,8 +52,8 @@ if __name__ == "__main__":
         runner="DataflowRunner",
         project="efiss-duong",
         # project='efiss-393918',
-        region="us-central1",
-        # region="asia-southeast1",
+        # region="us-central1",
+        region="asia-southeast1",
         # worker_zone="asia-southeast1-b",
         machine_type="n1-standard-2",
         temp_location="gs://efiss-tmp-us/temp",
@@ -63,6 +67,6 @@ if __name__ == "__main__":
     with beam.Pipeline(options=pipeline_options) as p:
         files = (
             p
-            | 'List Files' >> beam.io.ReadFromText(f"gs://{bucket_name}/queue/to_be_thumbnail.txt")
+            | 'List Files' >> beam.io.ReadFromText(f"gs://{bucket_name}/queue/to_be_thumbnail2.txt")
             | 'Process Files' >> beam.ParDo(GenerateThumbnail())
         )
