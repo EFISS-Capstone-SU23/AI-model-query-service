@@ -63,6 +63,6 @@ if __name__ == "__main__":
     with beam.Pipeline(options=pipeline_options) as p:
         files = (
             p
-            | 'List Files' >> beam.io.ReadFromText(f"gs://{bucket_name}/data/files_list_efiss.txt")
+            | 'List Files' >> beam.io.ReadFromText(f"gs://{bucket_name}/queue/to_be_thumbnail.txt")
             | 'Process Files' >> beam.ParDo(GenerateThumbnail())
         )
