@@ -49,24 +49,27 @@ class GenerateThumbnail(beam.DoFn):
 if __name__ == "__main__":
     bucket_name = 'efiss'
     pipeline_options = PipelineOptions(
-        runner="DataflowRunner",
-        project="efiss-duong",
-        # project='efiss-393918',
+        # runner="DataflowRunner",
+        # project="efiss-duong",
+        # # project='efiss-393918',
         # region="us-central1",
-        region="asia-southeast1",
-        # worker_zone="asia-southeast1-b",
-        machine_type="n1-standard-2",
-        temp_location="gs://efiss-tmp-us/temp",
-        requirements_file='requirements.txt',
-        autoscaling_algorithm='THROUGHPUT_BASED',
-        num_workers=1,
-        max_num_workers=4,
-        number_of_worker_harness_threads=100,
+        # # region="asia-southeast1",
+        # # worker_zone="asia-southeast1-b",
+        # machine_type="n1-standard-2",
+        # temp_location="gs://efiss-tmp-us/temp",
+        # requirements_file='requirements.txt',
+        # autoscaling_algorithm='NONE',
+        # num_workers=2,
+        # max_num_workers=2,
+        # number_of_worker_harness_threads=20,
+        direct_num_workers=15,
+        direct_running_mode='multi_threading',
         save_main_session=True,
     )
     with beam.Pipeline(options=pipeline_options) as p:
         files = (
             p
-            | 'List Files' >> beam.io.ReadFromText(f"gs://{bucket_name}/queue/to_be_thumbnail2.txt")
+            # | 'List Files' >> beam.io.ReadFromText(f"gs://{bucket_name}/queue/to_be_thumbnail3.txt")
+            | 'List Files' >> beam.io.ReadFromText(f"to_be_thumbnail6.txt")
             | 'Process Files' >> beam.ParDo(GenerateThumbnail())
         )
