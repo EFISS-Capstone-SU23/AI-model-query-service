@@ -194,3 +194,4 @@ lib/
 *.jpg
 *.jpeg
 *.bin
+*.ipynb
