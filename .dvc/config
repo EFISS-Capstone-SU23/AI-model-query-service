@@ -1,4 +1,6 @@
 [core]
-    remote = saplab
+    remote = gcs
 ['remote "saplab"']
     url = ssh://saplab/media/saplab/Data_Win/RSI_Do_An/thaiminhpv/dvc_storage
+['remote "gcs"']
+    url = gs://efiss/dvc
