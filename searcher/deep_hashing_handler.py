@@ -11,6 +11,7 @@ from ultralytics import YOLO
 from transformers import ViTImageProcessor, ViTForImageClassification
 import torch.nn as nn
 from pymilvus import connections, Collection
+import pymilvus
 
 logger = logging.getLogger(__name__)
 
@@ -46,6 +47,7 @@ class DeepHashingHandler(VisionHandler):
         model.eval()
         model.to(self.device)
         self.model = model
+        self.hash_model = torch.jit.load(os.path.join(model_path, "hash_model.pt"))
         self.processor = processor
         logger.info(f'Model loaded successfully from {model_path}: {self.model}')
 
@@ -66,11 +68,28 @@ class DeepHashingHandler(VisionHandler):
         self.collection.load()
         logger.info(f"Loaded collection to memory: {self.collection.name}")
 
-        self.search_param = {
-            "metric_type": "L2",
-            "ignore_growing": False,
-            # "params": {"nprobe": 16}
-        }
+    def search_hash(self, query_embedding: np.ndarray, topk: int) -> tuple[list[list[str]], list[list[float]]]:
+        """
+        Search the index for the topk most similar images from Milvus database
+
+        Args:
+            query_embedding (np.ndarray): the query embedding, batched (1, 768)
+            topk (int): the number of results to return
+            
+        Returns:
+            list[list[str]]: the list of image paths
+            list[list[float]]: the list of distances
+        """
+        result = self.collection.search(
+            data=query_embedding,
+            anns_field="embedding",
+            limit=topk,
+            output_fields=['path'],
+            consistency_level="Strong"
+        )
+        logger.info(f"result: {result}")
+
+        return [list(row.ids) for row in result], [list(row.distances) for row in result]
 
     def search(self, query_embedding: np.ndarray, topk: int) -> tuple[list[list[str]], list[list[float]]]:
         """
@@ -87,14 +106,6 @@ class DeepHashingHandler(VisionHandler):
         result = self.collection.search(
             data=query_embedding,
             anns_field="embedding",
-            # expr=None,
-            param={
-                "metric_type": "L2", 
-                # "offset": 5, 
-                # "ignore_growing": False, 
-                "params": {}
-                # "params": {"nprobe": 10}
-            },
             limit=topk,
             output_fields=['path'],
             consistency_level="Strong"
@@ -256,13 +267,47 @@ class DeepHashingHandler(VisionHandler):
 
         with torch.no_grad():
             features: torch.Tensor = self.model(**inputs).logits
+            hashs: torch.Tensor = self.hash_model(**inputs).logits
         logging.info(f"Features shape: {features.shape}")  # (1, 768)
         logging.info("Finish computing features")
 
         if len(set(topk_batch)) == 1:
             # all topk are the same, we can use batch search
-            images_paths, distances = self.search(features.cpu().numpy(), topk * 2 * diversity)
+            images_paths, distances = self.search_hash(hashs.cpu().numpy(), topk * 2 * diversity)
             # TODO: topk * 4 to ensure there are too few images after filtered by product
+            output_I: list[list[int]] = []
+            for i, topk in enumerate(topk_batch):
+                top1_distance = distances[i, 0]
+                collision_indices: list[int] = []
+                for j in range(topk):
+                    if distances[i, j] == top1_distance:
+                        collision_indices.append(j)
+                    else:
+                        break
+
+                if len(collision_indices) > 0:
+                    logger.info(f"Collision indices: {collision_indices}")
+                    collision_db_indices = I[i, collision_indices]
+                    logger.info(f"Collision db indices: {collision_db_indices}")
+                    # https://stackoverflow.com/a/76493512/11806050
+                    collision_ids: list[int] = collision_db_indices
+                    id_selector = pymilvus.IDSelectorArray(collision_ids)
+                    with torch.no_grad():
+                        float_query_vector = self.model(img_tensor)
+                    images_paths, distances = self.search(features.cpu().numpy(), topk * 2 * diversity)
+
+                    collision_reranked_distances, collision_reranked_indices = self.search(float_query_vector, len(collision_indices), params=pymilvus.SearchParametersIVF(sel=id_selector))
+                    logger.info(f"collision_reranked distances: {collision_reranked_distances}")
+                    logger.info(f"collision_reranked indices: {collision_reranked_indices}")
+                    
+                    logger.info(f"Before: {I[i, :]}")
+                    for j, idx in enumerate(collision_indices):
+                        I[i, idx] = collision_reranked_indices[j]
+                    logger.info(f"After reranking: {I[i, :]}")
+
+                output_I.append(I[i, :])
+                    
+            I = torch.tensor(output_I)
         else:
             raise NotImplementedError("Currently, we only support the case where all topk are the same")
 
