@@ -3,7 +3,7 @@ This scripts use YOLOv8 to offline cropping the images in the database to create
 """
 
 import pandas as pd
-import dask.dataframe as dd
+# import dask.dataframe as dd
 from ultralytics import YOLO
 import matplotlib.pyplot as plt
 import numpy as np
@@ -16,7 +16,12 @@ model = YOLO('torchscripts_models/yolo/yolov8n_12ep_24-7_32.5mAP.pt')
 model.to('cuda:0')
 tqdm.pandas()
 
-df = pd.read_csv('data/shopee/shopee-data-for-training-filter-corrupted.csv')
+# df = pd.read_csv('data/shopee/shopee-data-for-training-filter-corrupted.csv')
+images_paths = []
+with open('database_info.txt', 'r') as f:
+    for line in f.readlines():
+        images_paths.append(line.strip())
+df = pd.DataFrame(images_paths, columns=['images'])
 
 def crop_image(img: np.ndarray) -> list[np.ndarray]:
     """
@@ -30,7 +35,7 @@ def crop_image(img: np.ndarray) -> list[np.ndarray]:
     """
     result = model.predict(
         source=img,
-        conf=0.05,
+        conf=0.4,
         device='0',
         save=False,
         verbose=False
@@ -49,11 +54,11 @@ def crop_image(img: np.ndarray) -> list[np.ndarray]:
 ### Begin
 _df = df
 num_threads = 10
-ddf = dd.from_pandas(_df, npartitions=num_threads)
+# ddf = dd.from_pandas(_df, npartitions=num_threads)
 
 pbar = tqdm(total=len(df))
 
-output_datadir = "data/shopee_crop_yolo/images"
+output_datadir = "/media/thaiminhpv/DataStorage/EFISS/cropped_img"
 def crop_image_to_multiple_images(image_path: str) -> list[str]:
     """
     Crop an image with YOLOv5 into multiple images. Return the paths of the cropped images.
@@ -89,4 +94,4 @@ def df_crop_image(df: pd.DataFrame) -> pd.DataFrame:
 #     res.to_csv("data/shopee_crop_yolo/cropped_images.csv", index=False)
 
 df['cropped_img_paths'] = df['images'].progress_apply(crop_image_to_multiple_images)
-df.to_csv('data/shopee_crop_yolo/cropped_dataset.csv', index=False)
+df.to_csv('cropped_dataset.csv', index=False)
