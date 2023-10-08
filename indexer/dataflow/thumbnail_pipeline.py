@@ -1,6 +1,8 @@
 import apache_beam as beam
 from apache_beam.options.pipeline_options import PipelineOptions
 from PIL import Image
+import traceback
+import os
 import io
 
 class GenerateThumbnail(beam.DoFn):
@@ -10,23 +12,26 @@ class GenerateThumbnail(beam.DoFn):
         self.gcs = None
     
     def setup(self):
-        self.gcs = beam.io.gcp.gcsio.GcsIO()
-        self.gcs2  = beam.io.gcp.gcsio.GcsIO()
+        # self.gcs = beam.io.gcp.gcsio.GcsIO()
+        # self.gcs2  = beam.io.gcp.gcsio.GcsIO()
         self.io = io
         self.Image = Image
         
     def process(self, element):
         print(f"Processing {element}...")
-        input_path = f"gs://{self.bucket_name}/{element}"
+        # input_path = f"gs://{self.bucket_name}/{element}"
+        input_path = f"/media/thaiminhpv/DataStorage/EFISS/data/{element}"
+        # print(input_path)
         output_path = input_path.replace("product_images", "thumbnail")
+        # print(output_path)
         
         try:
-            if self.gcs2.exists(output_path):
+            if os.path.exists(output_path):
                 print(f"Thumbnail already exists for {element}.")
                 return [output_path]
 
-            # Load the image from GCS
-            with self.gcs.open(input_path, "rb") as f:
+            # Load the image
+            with open(input_path, "rb") as f:
                 image_bytes = f.read()
 
             # Generate thumbnail
@@ -36,13 +41,16 @@ class GenerateThumbnail(beam.DoFn):
             img.thumbnail((new_width, self.new_height))
             
             # Save the thumbnail to GCS
-            with self.gcs2.open(output_path, "wb") as f:
+            os.makedirs(os.path.dirname(output_path), exist_ok=True)
+            with open(output_path, "wb") as f:
+                # mkdir -p parent_dir
                 img.save(f, format=img.format)
 
             print(f"Done processing {element}.")
             return [output_path]
         except Exception as e:
             print(f"Error processing {element}: {e}")
+            print(traceback.format_exc())
             return [f"Error processing {element}: {e}"]
 
 
@@ -62,7 +70,7 @@ if __name__ == "__main__":
         # num_workers=2,
         # max_num_workers=2,
         # number_of_worker_harness_threads=20,
-        direct_num_workers=15,
+        direct_num_workers=30,
         direct_running_mode='multi_threading',
         save_main_session=True,
     )
@@ -70,6 +78,6 @@ if __name__ == "__main__":
         files = (
             p
             # | 'List Files' >> beam.io.ReadFromText(f"gs://{bucket_name}/queue/to_be_thumbnail3.txt")
-            | 'List Files' >> beam.io.ReadFromText(f"to_be_thumbnail6.txt")
+            | 'List Files' >> beam.io.ReadFromText(f"_.txt")
             | 'Process Files' >> beam.ParDo(GenerateThumbnail())
         )
