@@ -3,13 +3,13 @@ This script uses YOLOv8 to offline crop images and wraps it into a HuggingFace I
 """
 
 import numpy as np
+import urllib
 import cv2
 import pandas as pd
 import os
 from tqdm.auto import tqdm
 from datasets import Dataset, IterableDataset
 from ultralytics import YOLO
-from google.cloud import storage
 import torch
 from transformers import ViTImageProcessor, ViTForImageClassification, ViTFeatureExtractor
 import torch.nn as nn
@@ -32,7 +32,7 @@ def initialize_yolov8_model():
     model.to('cuda:0')
     return model
 
-def crop_image_with_yolov8(model, img):
+def crop_image_with_yolov8(model: YOLO, img: np.ndarray) -> list[np.ndarray]:
     # YOLOv8 cropping logic here
     result = model.predict(
         source=img,
@@ -50,26 +50,17 @@ def crop_image_with_yolov8(model, img):
 
 output_dir = 'data/product_images/'
 
-# Set up GCS client
-client = storage.Client()
-bucket_name = 'efiss'
-bucket = client.get_bucket(bucket_name)
-def read_img_from_GCS(image_path) -> np.ndarray:
-    # Get blob from GCS
-    blob = bucket.blob(image_path)
-
-    # Read image from blob
-    print(f"Dowloading {image_path} from GCS")
-    img_bytes = blob.download_as_bytes()
-    img_array = np.frombuffer(img_bytes, dtype=np.uint8)
-    img = cv2.imdecode(img_array, cv2.IMREAD_COLOR)
-    print(f"Downloaded {image_path} from GCS")
-
+def read_img_from_network(image_path: str) -> np.ndarray:
+    assert image_path.startswith('https://'), f"Image path {image_path} is not a valid URL"
+    req = urllib.request.urlopen(image_path)
+    arr = np.asarray(bytearray(req.read()), dtype=np.uint8)
+    img = cv2.imdecode(arr, cv2.IMREAD_COLOR)
     return img
+
 model = initialize_yolov8_model()
 def crop_image_to_multiple_images(row) -> dict:
     image_path = row['img_path']
-    img = read_img_from_GCS(row['img_path'])
+    img = read_img_from_network(row['img_path'])
     img_name = image_path.split("/")[-1].split(".")[0]
 
     try:
