@@ -1,5 +1,4 @@
 TOTAL_SHARD = 300
-SHARD_ID = 0
 
 """
 This script uses YOLOv8 to offline crop images and wraps it into a HuggingFace IterableDataset
@@ -17,6 +16,7 @@ from ultralytics import YOLO
 import torch
 from transformers import ViTImageProcessor, ViTForImageClassification, ViTFeatureExtractor
 import torch.nn as nn
+import pickle
 
 import datasets
 datasets.disable_caching()
@@ -89,42 +89,23 @@ def crop_image_to_multiple_images(row) -> dict:
     row['cropped_images'] = cropped_images
     return row
 
-# row.keys()
-# row['cropped_img_paths']
-import matplotlib.pyplot as plt
-def plot_img(img: np.ndarray):
-    img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-    plt.imshow(img)
-    plt.show()
-# plot_img(row['cropped_images'][0])
 processor = ViTImageProcessor.from_pretrained('google/vit-base-patch16-224')
 ranking_model = ViTForImageClassification.from_pretrained('google/vit-base-patch16-224')
 ranking_model.classifier = nn.Identity()
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 ranking_model.eval()
 ranking_model.to(device)
-...
+
 to_be_index: list[str] = []
 # with open('database_info.txt', 'r') as f:
 #     for line in tqdm(f.readlines()):
 #         to_be_index.append(line.strip())
 # read from http
 data_path = 'https://data.efiss.tech/efiss/queue/files_list_efiss.txt'
-import requests
 r = requests.get(data_path, stream=True)
-for line in tqdm(r.iter_lines()):
+for line in tqdm(r.iter_lines(), desc='Reading file list from http'):
     to_be_index.append(line.decode('utf-8').strip())
 
-# Convert to HuggingFace dataset
-dataset = Dataset.from_pandas(pd.DataFrame({'img_path': to_be_index}))
-dataset
-dataset = dataset.shard(num_shards=TOTAL_SHARD, index=SHARD_ID)
-# dataset = Dataset.from_dict(dataset[:34])
-dataset
-total_len = len(dataset)
-dataset = dataset.to_iterable_dataset()
-cropped_images = dataset.map(crop_image_to_multiple_images, batched=False, remove_columns=['img_path'])
-cropped_images
 # tokenize
 def tokenize_function(row):
     imgs: list[np.ndarray] = row["cropped_images"][0]  # batch size 1
@@ -143,29 +124,44 @@ def tokenize_function(row):
         return out
     else:
         return {'pixel_values': [], 'cropped_img_paths': []}
-        
-tokenized_images = cropped_images.map(tokenize_function, batched=True, batch_size=1, remove_columns=['cropped_images'])
-tokenized_images = tokenized_images.with_format("torch")
-dataloader = torch.utils.data.DataLoader(tokenized_images, batch_size=16, num_workers=0)
-out_cropped_img_paths: list[str] = []
-out_embeddings: list[torch.Tensor] = []
-with torch.no_grad():
-    for i, row in enumerate(tqdm(dataloader, total=total_len)):
-        logits = ranking_model(pixel_values=row['pixel_values']).logits  # (batch_size, 768)
 
-        out_cropped_img_paths.extend(row['cropped_img_paths'])  # list[str]
-        out_embeddings.append(logits.cpu())
-embeddings = torch.cat(out_embeddings, dim=0)
-payload = {
-    'shard_id': SHARD_ID,
-    'embeddings': embeddings.cpu().numpy(),
-    'cropped_img_paths': out_cropped_img_paths
-}
-import pickle
-import requests
-# prepare to send via http
-dumped_payload: bytes = pickle.dumps(payload)
-# send
-url = 'https://indexer.efiss.tech/upload'
-r = requests.post(url, files={'file': ('file.pkl', dumped_payload, 'application/octet-stream')})
-print(r.status_code, r.reason)
+def main(shard_id: int):
+    # Convert to HuggingFace dataset
+    dataset = Dataset.from_pandas(pd.DataFrame({'img_path': to_be_index}))
+    dataset = dataset.shard(num_shards=TOTAL_SHARD, index=shard_id)
+    # dataset = Dataset.from_dict(dataset[:34])
+    total_len = len(dataset)
+    dataset = dataset.to_iterable_dataset()
+    cropped_images = dataset.map(crop_image_to_multiple_images, batched=False, remove_columns=['img_path'])
+            
+    tokenized_images = cropped_images.map(tokenize_function, batched=True, batch_size=1, remove_columns=['cropped_images'])
+    tokenized_images = tokenized_images.with_format("torch")
+    dataloader = torch.utils.data.DataLoader(tokenized_images, batch_size=16, num_workers=0)
+    out_cropped_img_paths: list[str] = []
+    out_embeddings: list[torch.Tensor] = []
+    with torch.no_grad():
+        for i, row in enumerate(tqdm(dataloader, total=total_len, desc='Extracting embeddings')):
+            logits = ranking_model(pixel_values=row['pixel_values']).logits  # (batch_size, 768)
+
+            out_cropped_img_paths.extend(row['cropped_img_paths'])  # list[str]
+            out_embeddings.append(logits.cpu())
+    embeddings = torch.cat(out_embeddings, dim=0)
+    payload = {
+        'shard_id': shard_id,
+        'embeddings': embeddings.cpu().numpy(),
+        'cropped_img_paths': out_cropped_img_paths
+    }
+    # prepare to send via http
+    dumped_payload: bytes = pickle.dumps(payload)
+    # send
+    url = 'https://indexer.efiss.tech/upload'
+    r = requests.post(url, files={'file': ('file.pkl', dumped_payload, 'application/octet-stream')})
+    print(r.status_code, r.reason)
+
+if __name__ == '__main__':
+    import argparse
+    
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--shard_id', type=int, default=0, help='Shard ID', required=True)
+    args = parser.parse_args()
+    main(args.shard_id)
