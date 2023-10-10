@@ -27,6 +27,7 @@ datasets.disable_caching()
 # except RuntimeError:
 #     pass
 
+output_dir = 'data/product_images/'
 
 # Define your YOLOv8-related functions here
 def initialize_yolov8_model():
@@ -52,8 +53,6 @@ def crop_image_with_yolov8(model: YOLO, img: np.ndarray) -> list[np.ndarray]:
         x, y, _x, _y = list(box.int())
         cropped_images.append(result.orig_img[y:_y, x:_x])
     return cropped_images
-
-output_dir = 'data/product_images/'
 
 def read_img_from_network(image_path: str) -> np.ndarray:
     # assert image_path.startswith('https://'), f"Image path {image_path} is not a valid URL"
@@ -96,16 +95,6 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 ranking_model.eval()
 ranking_model.to(device)
 
-to_be_index: list[str] = []
-# with open('database_info.txt', 'r') as f:
-#     for line in tqdm(f.readlines()):
-#         to_be_index.append(line.strip())
-# read from http
-data_path = 'https://data.efiss.tech/efiss/queue/files_list_efiss.txt'
-r = requests.get(data_path, stream=True)
-for line in tqdm(r.iter_lines(), desc='Reading file list from http'):
-    to_be_index.append(line.decode('utf-8').strip())
-
 # tokenize
 def tokenize_function(row):
     imgs: list[np.ndarray] = row["cropped_images"][0]  # batch size 1
@@ -126,6 +115,15 @@ def tokenize_function(row):
         return {'pixel_values': [], 'cropped_img_paths': []}
 
 def main(shard_id: int):
+    to_be_index: list[str] = []
+    # with open('database_info.txt', 'r') as f:
+    #     for line in tqdm(f.readlines()):
+    #         to_be_index.append(line.strip())
+    # read from http
+    data_path = 'https://data.efiss.tech/efiss/queue/files_list_efiss.txt'
+    r = requests.get(data_path, stream=True)
+    for line in tqdm(r.iter_lines(), desc='Reading file list from http'):
+        to_be_index.append(line.decode('utf-8').strip())
     # Convert to HuggingFace dataset
     dataset = Dataset.from_pandas(pd.DataFrame({'img_path': to_be_index}))
     dataset = dataset.shard(num_shards=TOTAL_SHARD, index=shard_id)
@@ -136,12 +134,14 @@ def main(shard_id: int):
             
     tokenized_images = cropped_images.map(tokenize_function, batched=True, batch_size=1, remove_columns=['cropped_images'])
     tokenized_images = tokenized_images.with_format("torch")
+    # filter out empty images
+    tokenized_images = tokenized_images.filter(lambda x: len(x['pixel_values']) > 0)
     dataloader = torch.utils.data.DataLoader(tokenized_images, batch_size=16, num_workers=0)
     out_cropped_img_paths: list[str] = []
     out_embeddings: list[torch.Tensor] = []
     with torch.no_grad():
         for i, row in enumerate(tqdm(dataloader, total=total_len, desc='Extracting embeddings')):
-            logits = ranking_model(pixel_values=row['pixel_values']).logits  # (batch_size, 768)
+            logits = ranking_model(pixel_values=row['pixel_values'].to(device)).logits  # (batch_size, 768)
 
             out_cropped_img_paths.extend(row['cropped_img_paths'])  # list[str]
             out_embeddings.append(logits.cpu())
