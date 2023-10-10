@@ -1,4 +1,4 @@
-TOTAL_SHARD = 24
+TOTAL_SHARD = 300
 SHARD_ID = 0
 
 """
