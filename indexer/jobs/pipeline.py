@@ -139,7 +139,7 @@ def main(shard_id: int):
     dataset = dataset.shard(num_shards=TOTAL_SHARD, index=shard_id)
     # dataset = Dataset.from_dict(dataset[:34])
     total_len = len(dataset)
-    dataset = dataset.to_iterable_dataset()
+    dataset = dataset.to_iterable_dataset(num_shards=NUM_WORKER)
     cropped_images = dataset.map(crop_image_to_multiple_images, batched=False, remove_columns=['img_path'])
     # filter out empty images
     cropped_images = cropped_images.filter(_filter1)
