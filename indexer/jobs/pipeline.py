@@ -1,5 +1,6 @@
 TOTAL_SHARD = 300
 NUM_WORKER = 4
+BATCH_SIZE = 4
 
 """
 This script uses YOLOv8 to offline crop images and wraps it into a HuggingFace IterableDataset
@@ -148,7 +149,7 @@ def main(shard_id: int):
     tokenized_images = tokenized_images.with_format("torch")
     # filter out empty images
     tokenized_images = tokenized_images.filter(_filter2)
-    dataloader = torch.utils.data.DataLoader(tokenized_images, batch_size=16, num_workers=NUM_WORKER)
+    dataloader = torch.utils.data.DataLoader(tokenized_images, batch_size=BATCH_SIZE, num_workers=NUM_WORKER)
     out_cropped_img_paths: list[str] = []
     out_embeddings: list[torch.Tensor] = []
     total_images = 0
