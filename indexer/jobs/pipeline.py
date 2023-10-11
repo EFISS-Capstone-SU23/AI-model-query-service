@@ -1,4 +1,5 @@
 TOTAL_SHARD = 300
+NUM_WORKER = 1
 
 """
 This script uses YOLOv8 to offline crop images and wraps it into a HuggingFace IterableDataset
@@ -21,20 +22,23 @@ import pickle
 import datasets
 datasets.disable_caching()
 
-# from torch.multiprocessing import Pool, Process, set_start_method
-# try:
-#      set_start_method('spawn')
-# except RuntimeError:
-#     pass
+from torch.multiprocessing import Pool, Process, set_start_method
+try:
+     set_start_method('spawn')
+except RuntimeError:
+    pass
 
 output_dir = 'data/product_images/'
+yolo_model_path = 'yolov8n_12ep_24-7_32.5mAP.pt'
 
 # Define your YOLOv8-related functions here
 def initialize_yolov8_model():
     # download https://data.efiss.tech/efiss/yolov8n_12ep_24-7_32.5mAP.pt 
     # and put it in the current directory
-    urllib.request.urlretrieve('https://data.efiss.tech/efiss/yolov8n_12ep_24-7_32.5mAP.pt', 'yolov8n_12ep_24-7_32.5mAP.pt')
-    model = YOLO('yolov8n_12ep_24-7_32.5mAP.pt')
+    if not os.path.exists(yolo_model_path):
+        print(f"Downloading YOLOv8 model to {yolo_model_path}")
+        urllib.request.urlretrieve('https://data.efiss.tech/efiss/yolov8n_12ep_24-7_32.5mAP.pt', yolo_model_path)
+    model = YOLO(yolo_model_path)
     model.to('cuda:0')
     return model
 
@@ -42,7 +46,7 @@ def crop_image_with_yolov8(model: YOLO, img: np.ndarray) -> list[np.ndarray]:
     # YOLOv8 cropping logic here
     result = model.predict(
         source=img,
-        conf=0.3,
+        conf=0.2,
         device='0',
         save=False,
         verbose=False
@@ -114,16 +118,22 @@ def tokenize_function(row):
     else:
         return {'pixel_values': [], 'cropped_img_paths': []}
 
+def _filter1(x):
+    return len(x['cropped_img_paths']) > 0
+
+def _filter2(x):
+    return len(x['pixel_values']) > 0
+
 def main(shard_id: int):
     to_be_index: list[str] = []
-    # with open('database_info.txt', 'r') as f:
-    #     for line in tqdm(f.readlines()):
-    #         to_be_index.append(line.strip())
-    # read from http
+    file_path = 'database_info.txt'
     data_path = 'https://data.efiss.tech/efiss/queue/files_list_efiss.txt'
-    r = requests.get(data_path, stream=True)
-    for line in tqdm(r.iter_lines(), desc='Reading file list from http'):
-        to_be_index.append(line.decode('utf-8').strip())
+    if not os.path.exists(file_path):
+        print(f"Downloading file list from {data_path}")
+        urllib.request.urlretrieve(data_path, file_path)
+    with open('database_info.txt', 'r') as f:
+        for line in tqdm(f.readlines(), desc='Reading file list from local'):
+            to_be_index.append(line.strip())
     # Convert to HuggingFace dataset
     dataset = Dataset.from_pandas(pd.DataFrame({'img_path': to_be_index}))
     dataset = dataset.shard(num_shards=TOTAL_SHARD, index=shard_id)
@@ -131,12 +141,14 @@ def main(shard_id: int):
     total_len = len(dataset)
     dataset = dataset.to_iterable_dataset()
     cropped_images = dataset.map(crop_image_to_multiple_images, batched=False, remove_columns=['img_path'])
+    # filter out empty images
+    cropped_images = cropped_images.filter(_filter1)
             
     tokenized_images = cropped_images.map(tokenize_function, batched=True, batch_size=1, remove_columns=['cropped_images'])
     tokenized_images = tokenized_images.with_format("torch")
     # filter out empty images
-    tokenized_images = tokenized_images.filter(lambda x: len(x['pixel_values']) > 0)
-    dataloader = torch.utils.data.DataLoader(tokenized_images, batch_size=16, num_workers=0)
+    tokenized_images = tokenized_images.filter(_filter2)
+    dataloader = torch.utils.data.DataLoader(tokenized_images, batch_size=16, num_workers=NUM_WORKER)
     out_cropped_img_paths: list[str] = []
     out_embeddings: list[torch.Tensor] = []
     with torch.no_grad():
