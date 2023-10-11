@@ -87,7 +87,7 @@ def crop_image_to_multiple_images(row) -> dict:
         cropped_image_paths.append(cropped_image_path)
 
     # return {'cropped_img_paths': cropped_image_paths, 'cropped_images': cropped_images}
-    print(f"Finished cropping {image_path}: {len(cropped_images)} images")
+    # print(f"Finished cropping {image_path}: {len(cropped_images)} images")
     row['cropped_img_paths'] = cropped_image_paths
     row['cropped_images'] = cropped_images
     return row
@@ -151,12 +151,16 @@ def main(shard_id: int):
     dataloader = torch.utils.data.DataLoader(tokenized_images, batch_size=16, num_workers=NUM_WORKER)
     out_cropped_img_paths: list[str] = []
     out_embeddings: list[torch.Tensor] = []
+    total_images = 0
     with torch.no_grad():
-        for i, row in enumerate(tqdm(dataloader, total=total_len, desc='Extracting embeddings')):
+        pbar = tqdm(dataloader, total=total_len, desc='Extracting embeddings')
+        for i, row in enumerate(pbar):
             logits = ranking_model(pixel_values=row['pixel_values'].to(device)).logits  # (batch_size, 768)
 
             out_cropped_img_paths.extend(row['cropped_img_paths'])  # list[str]
             out_embeddings.append(logits.cpu())
+            total_images += len(row['cropped_img_paths'])
+            pbar.set_postfix({'total_images': total_images})
     embeddings = torch.cat(out_embeddings, dim=0)
     payload = {
         'shard_id': shard_id,
