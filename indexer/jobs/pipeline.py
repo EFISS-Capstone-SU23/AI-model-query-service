@@ -1,6 +1,6 @@
 TOTAL_SHARD = 300
-NUM_WORKER = 4
-BATCH_SIZE = 4
+NUM_WORKER = 8
+BATCH_SIZE = 3
 
 """
 This script uses YOLOv8 to offline crop images and wraps it into a HuggingFace IterableDataset
