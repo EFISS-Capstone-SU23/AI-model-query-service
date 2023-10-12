@@ -44,6 +44,7 @@ def initialize_yolov8_model():
     return model
 
 def crop_image_with_yolov8(model: YOLO, img: np.ndarray) -> list[np.ndarray]:
+    assert img is not None and len(img) != 0, "Image is None"
     # YOLOv8 cropping logic here
     result = model.predict(
         source=img,
@@ -113,6 +114,7 @@ def tokenize_function(row):
             out = inputs
         else:
             out['pixel_values'].append(inputs['pixel_values'][0])
+    row["cropped_images"][0] = None  # clear mem
     if out:
         out['cropped_img_paths'] = row['cropped_img_paths'][0] or []
         return out
@@ -154,7 +156,7 @@ def main(shard_id: int):
     out_embeddings: list[torch.Tensor] = []
     total_images = 0
     with torch.no_grad():
-        pbar = tqdm(dataloader, total=total_len, desc='Extracting embeddings')
+        pbar = tqdm(dataloader, total=total_len // 3, desc='Extracting embeddings')
         for i, row in enumerate(pbar):
             logits = ranking_model(pixel_values=row['pixel_values'].to(device)).logits  # (batch_size, 768)
 
