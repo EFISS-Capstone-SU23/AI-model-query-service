@@ -171,7 +171,9 @@ def main(shard_id: int):
         'cropped_img_paths': out_cropped_img_paths
     }
     # prepare to send via http
-    dumped_payload: bytes = pickle.dumps(payload)
+    dumped_payload: bytes = pickle.dumps(payload, protocol=pickle.HIGHEST_PROTOCOL)
+    with open(f'payload_{shard_id}.pkl', 'wb') as f:
+        f.write(dumped_payload)
     # send
     url = 'https://indexer.efiss.tech/upload'
     r = requests.post(url, files={'file': ('file.pkl', dumped_payload, 'application/octet-stream')})
